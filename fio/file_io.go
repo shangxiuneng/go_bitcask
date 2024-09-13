@@ -34,3 +34,8 @@ func (f *FileIO) Sync() error {
 func (f *FileIO) Close() error {
 	return f.fd.Close()
 }
+
+// Size 获取当前文件的大小
+func (f *FileIO) Size() (int, error) {
+	return 0, nil
+}

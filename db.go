@@ -90,7 +90,7 @@ func (d *DB) loadIndex() error {
 			offset = offset + recordSize
 
 			if i == len(fileIDs)-1 {
-				d.activeFile.Offset = offset
+				d.activeFile.WriteOffSet = offset
 			}
 		}
 	}
@@ -188,7 +188,7 @@ func (d *DB) appendRecord(record *data.RecordInfo) (*data.RecordPos, error) {
 		}
 	}
 
-	writeOffset := d.activeFile.Offset
+	writeOffset := d.activeFile.WriteOffSet
 
 	d.activeFile.Write(enRecord)
 
