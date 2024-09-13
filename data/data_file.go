@@ -16,7 +16,12 @@ type DataFile struct {
 	IOManager   fio.IOManager
 }
 
-func OpenDataFile(dirPath string, fileID int) (*DataFile, error) {
+// NewDataFile 创建一个DataFile
+func NewDataFile(dirPath string, fileID int) (*DataFile, error) {
+	if dirPath == "" {
+		return nil, errors.New("文件路径为空")
+	}
+
 	fileName := filepath.Join(dirPath, fmt.Sprintf("%09d", fileID)+".data")
 
 	ioManager, err := fio.NewIOManager(fileName)
@@ -39,13 +44,19 @@ func (d *DataFile) Sync() error {
 }
 
 func (d *DataFile) Write(buf []byte) error {
+	if len(buf) == 0 {
+		return nil
+	}
+
 	n, err := d.IOManager.Write(buf)
 	if err != nil {
+		log.Error().Msgf("Write error,err = %v", err)
 		return err
 	}
 
 	d.WriteOffSet = d.WriteOffSet + n
 
+	log.Log().Msgf("write success,n = %v", n)
 	return nil
 }
 
@@ -57,13 +68,17 @@ func (d *DataFile) ReadRecord(offset int) (*RecordInfo, int, error) {
 		return nil, 0, err
 	}
 
+	if fileSize == 0 {
+		return nil, 0, errors.New("当前文件为空")
+	}
+
 	headerSize := maxRecordSize
 
 	if headerSize+offset > fileSize {
 		headerSize = fileSize - offset
 	}
 
-	headerByte, err := d.readNBytes(headerSize, offset)
+	headerByte, err := d.readFromOffset(headerSize, offset)
 	if err != nil {
 		log.Error().Msgf("ReadRecord error,err = %v", err)
 		return nil, 0, err
@@ -81,18 +96,18 @@ func (d *DataFile) ReadRecord(offset int) (*RecordInfo, int, error) {
 	recordSize := keySize + valueSize + headerSize
 
 	record := RecordInfo{
-		RecordType: recordHeader.recordType,
+		Type: recordHeader.recordType,
 	}
 
 	// 读取用户实际存储的key value数据
-	recordByte, err := d.readNBytes(keySize+valueSize, offset+headerSize)
+	_, err = d.readFromOffset(keySize+valueSize, offset+headerSize)
 	if err != nil {
 		log.Error().Msgf("ReadRecord error,err = %v", err)
 		return nil, 0, err
 	}
 
 	// TODO 校验数据的有效性
-	crc := getRecordCRC(&record, headerByte[crc32.Size:headerSize])
+	crc := GetRecordCRC(&record, headerByte[crc32.Size:headerSize])
 
 	if crc != recordHeader.crc {
 		// 校验和出错
@@ -103,7 +118,9 @@ func (d *DataFile) ReadRecord(offset int) (*RecordInfo, int, error) {
 	return &record, recordSize, nil
 }
 
-// 从文件中读取
-func (d *DataFile) readNBytes(n int, offset int) ([]byte, error) {
-	return nil, nil
+// readFromOffset 从文件的offset位置读取n个长度
+func (d *DataFile) readFromOffset(n int, offset int) ([]byte, error) {
+	buf := make([]byte, n)
+	_, err := d.IOManager.Read(buf, int64(offset))
+	return buf, err
 }

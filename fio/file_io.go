@@ -1,6 +1,9 @@
 package fio
 
-import "os"
+import (
+	"github.com/rs/zerolog/log"
+	"os"
+)
 
 type FileIO struct {
 	fd *os.File
@@ -9,6 +12,7 @@ type FileIO struct {
 func NewFileIO(fileName string) (IOManager, error) {
 	fd, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
 	if err != nil {
+		log.Error().Msgf("NewFileIO error,err = %v", err)
 		return nil, err
 	}
 	return &FileIO{
@@ -37,5 +41,12 @@ func (f *FileIO) Close() error {
 
 // Size 获取当前文件的大小
 func (f *FileIO) Size() (int, error) {
-	return 0, nil
+	fileInfo, err := f.fd.Stat()
+
+	if err != nil {
+		log.Error().Msgf("size error,err = %v", err)
+		return 0, err
+	}
+
+	return int(fileInfo.Size()), nil
 }
