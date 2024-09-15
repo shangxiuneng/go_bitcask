@@ -2,6 +2,7 @@ package data
 
 import (
 	"encoding/binary"
+	"fmt"
 	"hash/crc32"
 )
 
@@ -59,6 +60,8 @@ func EncodeRecord(recordInfo *RecordInfo) ([]byte, int) {
 
 	crc := crc32.ChecksumIEEE(recordBuf[4:])
 
+	fmt.Println(crc)
+
 	binary.LittleEndian.PutUint32(recordBuf[:4], crc)
 
 	return recordBuf, totalSize
@@ -70,8 +73,8 @@ crc  type     keySize valueSize
 
 	crc        uint32 // crc校验
 	recordType byte   // 记录类型
-	keySize    uint32
-	valueSize  uint32
+	keySize    uint32 //
+	valueSize  uint32  //
 */
 func decodeRecordHeader(buf []byte) (*RecordHeader, int) {
 	if len(buf) <= 4 {
@@ -113,16 +116,23 @@ func encodeRecordHeader(header *RecordHeader) ([]byte, error) {
 	return nil, nil
 }
 
-/*
-校验数据的有效性 不用校验前4个字节
-*/
+// GetRecordCRC 校验数据的有效性 不用校验前4个字节
 func GetRecordCRC(r *RecordInfo, headerBuf []byte) uint32 {
 
 	if r == nil {
 		return 0
 	}
 
+	// 构造一个buf
+	// 把数据都copy到buf中
+	// 返回crc的校验值即可
 	buf := make([]byte, len(headerBuf)+len(r.Key)+len(r.Value))
+
+	copy(buf, headerBuf)
+	copy(buf[len(headerBuf):], r.Key)
+	copy(buf[len(headerBuf)+len(r.Key):], r.Value)
+
+	// buf := []byte{1, 2, 22, 49, 104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100}
 
 	return crc32.ChecksumIEEE(buf)
 

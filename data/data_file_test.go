@@ -1,7 +1,6 @@
 package data
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io/fs"
 	"os"
@@ -45,20 +44,20 @@ func TestDataFile_ReadRecord(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 
-	// 一条记录
+	// 写入一条记录
 	recordInfo := &RecordInfo{
 		Key:   []byte("1"),
 		Value: []byte("hello world"),
 		Type:  1,
 	}
 	recordBuf, size := EncodeRecord(recordInfo)
-	t.Logf("size = %v", size)
 
 	err = dataFile.Write(recordBuf)
 	assert.Nil(t, err)
 
+	// 读出记录
 	gotRecordInfo, gotSize, err := dataFile.ReadRecord(0)
 	assert.Nil(t, err)
 	assert.Equal(t, gotSize, size)
-	fmt.Println(gotRecordInfo, recordInfo)
+	assert.Equal(t, gotRecordInfo.Key, recordInfo.Key)
 }

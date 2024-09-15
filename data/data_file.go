@@ -43,6 +43,10 @@ func (d *DataFile) Sync() error {
 	return d.IOManager.Sync()
 }
 
+func (d *DataFile) Close() error {
+	return d.IOManager.Close()
+}
+
 func (d *DataFile) Write(buf []byte) error {
 	if len(buf) == 0 {
 		return nil
@@ -100,13 +104,15 @@ func (d *DataFile) ReadRecord(offset int) (*RecordInfo, int, error) {
 	}
 
 	// 读取用户实际存储的key value数据
-	_, err = d.readFromOffset(keySize+valueSize, offset+headerSize)
+	realKVBuf, err := d.readFromOffset(keySize+valueSize, offset+headerSize)
 	if err != nil {
 		log.Error().Msgf("ReadRecord error,err = %v", err)
 		return nil, 0, err
 	}
 
-	// TODO 校验数据的有效性
+	record.Key = realKVBuf[:keySize]
+	record.Value = realKVBuf[keySize:]
+
 	crc := GetRecordCRC(&record, headerByte[crc32.Size:headerSize])
 
 	if crc != recordHeader.crc {
