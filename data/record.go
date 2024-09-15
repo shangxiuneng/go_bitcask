@@ -53,13 +53,13 @@ func EncodeRecord(recordInfo *RecordInfo) ([]byte, int) {
 	copy(recordBuf[:index], headerBuf[:index])
 
 	// 复制key
-	copy(recordBuf[:index], recordInfo.Key)
+	copy(recordBuf[index:], recordInfo.Key)
 	// 复制value
-	copy(recordBuf[:index+len(recordInfo.Key)], recordInfo.Value)
+	copy(recordBuf[index+len(recordInfo.Key):], recordInfo.Value)
 
 	crc := crc32.ChecksumIEEE(recordBuf[4:])
 
-	binary.LittleEndian.PutUint32(recordBuf[4:], crc)
+	binary.LittleEndian.PutUint32(recordBuf[:4], crc)
 
 	return recordBuf, totalSize
 }

@@ -47,8 +47,8 @@ func TestDataFile_ReadRecord(t *testing.T) {
 
 	// 一条记录
 	recordInfo := &RecordInfo{
-		Key:   []byte{1},
-		Value: []byte{2},
+		Key:   []byte("1"),
+		Value: []byte("hello world"),
 		Type:  1,
 	}
 	recordBuf, size := EncodeRecord(recordInfo)

@@ -81,7 +81,7 @@ func (d *DB) loadIndex() error {
 				Offset: offset,
 			}
 
-			if recordInfo.RecordType == -1 {
+			if recordInfo.Type == 2 {
 				d.index.Delete(recordInfo.Key)
 			} else {
 				d.index.Put(recordInfo.Key, &pos)
@@ -120,7 +120,7 @@ func (d *DB) loadDataFiles() error {
 	// 遍历文件id 获取文件句柄
 
 	for i, fileID := range fileIDs {
-		dataFile, err := data.OpenDataFile(d.options.DirPath, fileID)
+		dataFile, err := data.NewDataFile(d.options.DirPath, fileID)
 		if err != nil {
 			log.Error().Msgf("OpenDataFile error,err = %v", err)
 			return err
@@ -143,9 +143,9 @@ func (d *DB) Put(key []byte, value []byte) error {
 	}
 
 	record := data.RecordInfo{
-		Key:        key,
-		Value:      value,
-		RecordType: 1,
+		Key:   key,
+		Value: value,
+		Type:  1,
 	}
 
 	pos, err := d.appendRecord(&record)
@@ -249,7 +249,7 @@ func (d *DB) Get(key []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	if recordInfo.RecordType == -1 {
+	if recordInfo.Type == 2 {
 		log.Log().Msgf("key is deleted,fileID = %v,offSet = %v", pos.FileID, pos.Offset)
 		return nil, nil
 	}
@@ -274,8 +274,8 @@ func (d *DB) Delete(key []byte) error {
 	}
 
 	record := data.RecordInfo{
-		Key:        key,
-		RecordType: -1,
+		Key:  key,
+		Type: 2,
 	}
 
 	if _, err := d.appendRecord(&record); err != nil {
