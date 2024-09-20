@@ -7,7 +7,8 @@ import (
 )
 
 type Item struct {
-	key    []byte
+	key []byte
+	// TODO record这个命名不好
 	record *data.RecordPos
 }
 

@@ -100,7 +100,7 @@ func (d *DataFile) ReadRecord(offset int) (*RecordInfo, int, error) {
 	recordSize := keySize + valueSize + headerSize
 
 	record := RecordInfo{
-		Type: recordHeader.recordType,
+		Type: RecordType(recordHeader.recordType),
 	}
 
 	// 读取用户实际存储的key value数据

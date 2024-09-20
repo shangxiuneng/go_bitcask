@@ -19,6 +19,7 @@ type DB struct {
 	fileMapping map[int]*data.DataFile // 保存文件id到文件句柄的映射
 	options     Config                 // 配置项
 	index       index.Index            // 内存索引
+	fileIDs     []int                  // 文件id 加载索引使用
 }
 
 func Open(option Config) (*DB, error) {
@@ -46,32 +47,44 @@ func Open(option Config) (*DB, error) {
 	}
 
 	// 构造索引
+	if err := db.loadIndex(); err != nil {
+		log.Error().Msgf("loadIndex error,err = %v", err)
+		return nil, err
+	}
 
 	return db, nil
 }
 
 // TODO 载入索引的过程会非常慢
 func (d *DB) loadIndex() error {
-	var fileIDs []int
+	if len(d.fileIDs) == 0 {
+		// 没有文件id
+		return nil
+	}
+
+	fileIDs := d.fileIDs
 
 	for i, fileID := range fileIDs {
 		dataFile := &data.DataFile{}
 
 		if fileID == d.activeFile.FileID {
-
+			dataFile = d.activeFile
 		} else {
-
+			dataFile = d.fileMapping[fileID]
 		}
 
 		offset := 0
 
+		// 循环读文件内容
 		for {
 			recordInfo, recordSize, err := dataFile.ReadRecord(offset)
 			if err != nil {
 				if err == io.EOF {
 					// 说明读到文件末尾了
+					log.Info().Msgf("io eof,fileID = %v", fileID)
 					break
 				}
+
 				log.Error().Msgf("ReadRecord error,err = %v", err)
 				return err
 			}
@@ -81,7 +94,7 @@ func (d *DB) loadIndex() error {
 				Offset: offset,
 			}
 
-			if recordInfo.Type == 2 {
+			if recordInfo.Type == data.DeleteRecord {
 				d.index.Delete(recordInfo.Key)
 			} else {
 				d.index.Put(recordInfo.Key, &pos)
@@ -101,15 +114,18 @@ func (d *DB) loadDataFiles() error {
 	// 通过配置项把目录读取出来
 	dirEntries, err := os.ReadDir(d.options.DirPath)
 	if err != nil {
+		log.Error().Msgf("ReadDir error,err = %v", err)
 		return err
 	}
+
 	var fileIDs []int
 	for _, entry := range dirEntries {
 		if strings.HasSuffix(entry.Name(), ".data") {
 			fileNameList := strings.Split(entry.Name(), ".")
 			fileID, err := strconv.Atoi(fileNameList[0])
 			if err != nil {
-
+				log.Error().Msgf("Atoi error,err = %v", err)
+				return err
 			}
 			fileIDs = append(fileIDs, fileID)
 		}
@@ -118,7 +134,6 @@ func (d *DB) loadDataFiles() error {
 	sort.Ints(fileIDs)
 
 	// 遍历文件id 获取文件句柄
-
 	for i, fileID := range fileIDs {
 		dataFile, err := data.NewDataFile(d.options.DirPath, fileID)
 		if err != nil {
@@ -132,6 +147,8 @@ func (d *DB) loadDataFiles() error {
 			d.fileMapping[fileID] = dataFile
 		}
 	}
+
+	d.fileIDs = fileIDs
 
 	return nil
 }
@@ -170,6 +187,10 @@ func (d *DB) appendRecord(record *data.RecordInfo) (*data.RecordPos, error) {
 
 	if d.activeFile == nil {
 		// 当前的活跃文件为空 则设置活跃文件
+		if err := d.setActiveFile(); err != nil {
+			log.Error().Msgf("setActiveFile error,err = %v", err)
+			return nil, err
+		}
 	}
 
 	enRecord, size := data.EncodeRecord(record)
@@ -207,6 +228,17 @@ func (d *DB) appendRecord(record *data.RecordInfo) (*data.RecordPos, error) {
 
 // 设置当前的活跃文件
 func (d *DB) setActiveFile() error {
+	fileID := 0
+	if d.activeFile != nil {
+		fileID = d.activeFile.FileID + 1
+	}
+
+	dataFile, err := data.NewDataFile(d.options.DirPath, fileID)
+	if err != nil {
+		log.Error().Msgf("NewDataFile error,err = %v", err)
+		return err
+	}
+	d.activeFile = dataFile
 	return nil
 }
 
@@ -221,6 +253,16 @@ func (d *DB) Get(key []byte) ([]byte, error) {
 		return nil, err
 	}
 
+	recordInfo, err := d.getValueByPos(pos)
+	if err != nil {
+		log.Error().Msgf("getValueByPos error,err = %v", err)
+		return nil, err
+	}
+
+	return recordInfo.Value, nil
+}
+
+func (d *DB) getValueByPos(pos *data.RecordPos) (*data.RecordInfo, error) {
 	// 在文件中从对应的位置获取数据
 	if pos == nil {
 		// 说明key不存在
@@ -254,7 +296,7 @@ func (d *DB) Get(key []byte) ([]byte, error) {
 		return nil, nil
 	}
 
-	return recordInfo.Value, nil
+	return recordInfo, nil
 }
 
 func (d *DB) Delete(key []byte) error {
@@ -284,4 +326,9 @@ func (d *DB) Delete(key []byte) error {
 	}
 
 	return d.index.Delete(key)
+}
+
+// Close 关闭数据库
+func (d *DB) Close() {
+	return
 }

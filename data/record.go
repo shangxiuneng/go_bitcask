@@ -11,15 +11,22 @@ type RecordPos struct {
 	Offset int // 在文件中的偏移量
 }
 
+type RecordType byte
+
+const (
+	NormalRecord = 1
+	DeleteRecord = 2
+)
+
 type RecordInfo struct {
 	Key   []byte
 	Value []byte
-	Type  byte // 记录的类型
+	Type  RecordType // 记录的类型
 }
 
 type RecordHeader struct {
-	crc        uint32 // crc校验
-	recordType byte   // 记录类型
+	crc        uint32     // crc校验
+	recordType RecordType // 记录类型
 	keySize    uint32
 	valueSize  uint32
 }
@@ -37,7 +44,7 @@ crc  type     keySize valueSize key value
 func EncodeRecord(recordInfo *RecordInfo) ([]byte, int) {
 	headerBuf := make([]byte, maxRecordSize)
 
-	headerBuf[4] = recordInfo.Type
+	headerBuf[4] = byte(recordInfo.Type)
 
 	index := 5
 	n := binary.PutVarint(headerBuf[index:], int64(len(recordInfo.Key)))
@@ -96,7 +103,7 @@ func decodeRecordHeader(buf []byte) (*RecordHeader, int) {
 
 	return &RecordHeader{
 		crc:        crc,
-		recordType: recordType,
+		recordType: RecordType(recordType),
 		keySize:    uint32(keySize),
 		valueSize:  uint32(valueSize),
 	}, index
@@ -106,7 +113,7 @@ func decodeRecordHeader(buf []byte) (*RecordHeader, int) {
 func encodeRecordHeader(header *RecordHeader) ([]byte, error) {
 	headerBuf := make([]byte, maxRecordSize)
 
-	headerBuf[4] = header.recordType
+	headerBuf[4] = byte(header.recordType)
 	index := 5
 	n := binary.PutVarint(headerBuf[index:], int64(header.keySize))
 	index = index + n

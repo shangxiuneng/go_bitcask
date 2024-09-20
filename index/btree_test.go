@@ -7,7 +7,7 @@ import (
 )
 
 func TestBTree_Put(t *testing.T) {
-	btreeIndex := NewBTree(2)
+	btreeIndex := NewIndex(2)
 
 	// key为nil
 	err := btreeIndex.Put(nil, &data.RecordPos{FileID: 1, Offset: 10})
@@ -20,7 +20,7 @@ func TestBTree_Put(t *testing.T) {
 }
 
 func TestBTree_Delete(t *testing.T) {
-	btreeIndex := NewBTree(2)
+	btreeIndex := NewIndex(2)
 
 	err := btreeIndex.Delete(nil)
 	assert.NotNil(t, err)
