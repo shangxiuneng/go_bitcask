@@ -24,6 +24,8 @@ func NewDataFile(dirPath string, fileID int) (*DataFile, error) {
 
 	fileName := filepath.Join(dirPath, fmt.Sprintf("%09d", fileID)+".data")
 
+	log.Info().Msgf("fileName = %v", fileName)
+
 	ioManager, err := fio.NewIOManager(fileName)
 	if err != nil {
 		log.Error().Msgf("OpenDataFile error,err = %v", err)

@@ -24,6 +24,9 @@ type DB struct {
 
 func Open(option Config) (*DB, error) {
 	// TODO 校验配置项
+	if err := checkDBConfig(option); err != nil {
+		return nil, err
+	}
 
 	if _, err := os.Stat(option.DirPath); os.IsNotExist(err) {
 		// 创建目录
@@ -31,6 +34,7 @@ func Open(option Config) (*DB, error) {
 			log.Error().Msgf("MkdirAll error,err = %v", err)
 			return nil, err
 		}
+		log.Info().Msg("mkdir success")
 	}
 
 	db := &DB{
@@ -53,6 +57,18 @@ func Open(option Config) (*DB, error) {
 	}
 
 	return db, nil
+}
+
+func checkDBConfig(option Config) error {
+	if option.DirPath == "" {
+		return errors.New("dir is nil")
+	}
+
+	if option.DataFileSize <= 0 {
+		return errors.New("data file size is 0")
+	}
+
+	return nil
 }
 
 // TODO 载入索引的过程会非常慢
@@ -329,6 +345,65 @@ func (d *DB) Delete(key []byte) error {
 }
 
 // Close 关闭数据库
-func (d *DB) Close() {
-	return
+func (d *DB) Close() error {
+	if d.activeFile == nil {
+		return nil
+	}
+
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	if err := d.activeFile.Close(); err != nil {
+		return err
+	}
+
+	for _, file := range d.fileMapping {
+		if err := file.Close(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ListKeys 获取数据库中所有的key
+func (d *DB) ListKeys() [][]byte {
+	it := d.index.Iterator(false)
+
+	keys := make([][]byte, 0)
+
+	for it.Rewind(); it.Valid(); it.Next() {
+		keys = append(keys, it.Key())
+	}
+
+	return keys
+}
+
+// Fold 获取的数据 并执行用户指定的操作
+func (d *DB) Fold(fn func(key []byte, value []byte) bool) error {
+	if fn == nil {
+		return errors.New("fn is nil")
+	}
+	it := d.index.Iterator(false)
+	for it.Rewind(); it.Valid(); it.Next() {
+		value, err := d.getValueByPos(it.Value())
+		if err != nil {
+			return err
+		}
+
+		if !fn(it.Key(), value.Value) {
+			break
+		}
+	}
+
+	return nil
+}
+
+// Sync 刷盘
+func (d *DB) Sync() error {
+	if d.activeFile == nil {
+		return nil
+	}
+
+	return d.activeFile.Sync()
 }
