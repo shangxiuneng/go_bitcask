@@ -7,6 +7,7 @@ import (
 	"go_bitcask/index"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -44,6 +45,15 @@ func Open(option Config) (*DB, error) {
 		lock:        new(sync.Mutex),
 		fileMapping: map[int]*data.DataFile{},
 		index:       index.NewIndex(index.BTreeIndex),
+	}
+
+	if err := db.loadMergeFile(); err != nil {
+		log.Error().Msgf("loadMergeFile error,er = %v", err)
+		return nil, err
+	}
+
+	if err := db.loadHintFile(); err != nil {
+
 	}
 
 	// 加载对应的数据文件
@@ -85,7 +95,26 @@ func (d *DB) loadIndex() error {
 	currSeqNo := int32(0)
 	trxRecordMapping := make(map[int32][]*data.TrxRecord)
 
+	hasMerge := false
+	noMergeFileID := 0
+
+	mergeFileName := filepath.Join(d.options.DirPath, data.MergeFinFileName)
+	if _, err := os.Stat(mergeFileName); err == nil {
+		var err error
+		noMergeFileID, err = d.getNoMergeFileID(mergeFileName)
+		if err != nil {
+			log.Error().Msgf("getNoMergeFileID error,err = %v", err)
+			return err
+		}
+		hasMerge = true
+	}
+
 	for i, fileID := range fileIDs {
+
+		if hasMerge && fileID < noMergeFileID {
+			continue
+		}
+
 		dataFile := &data.DataFile{}
 
 		if fileID == d.activeFile.FileID {

@@ -14,8 +14,9 @@ type RecordPos struct {
 type RecordType byte
 
 const (
-	NormalRecord = 1
-	DeleteRecord = 2
+	NormalRecord      = 1
+	DeleteRecord      = 2
+	TransactionRecord = 3 // 事务Record的标识
 )
 
 type RecordInfo struct {
@@ -148,6 +149,33 @@ func GetRecordCRC(r *RecordInfo, headerBuf []byte) uint32 {
 
 }
 
+// EncodeRecordPos 对RecordPos进行编码
 func EncodeRecordPos(pos *RecordPos) []byte {
-	return nil
+	buf := make([]byte, binary.MaxVarintLen32*2)
+	index := 0
+	n := binary.PutVarint(buf[index:], int64(pos.FileID))
+	index = index + n
+	n = binary.PutVarint(buf[index:], int64(pos.Offset))
+	index = index + n
+	return buf[:index]
+}
+
+func DecodeRecordPos(posData []byte) (*RecordPos, error) {
+	pos := &RecordPos{}
+	index := 0
+
+	fileID, n := binary.Varint(posData[index:])
+	if n <= 0 {
+		return nil, fmt.Errorf("failed to decode FileID")
+	}
+	pos.FileID = int(fileID)
+	index += n
+
+	offset, n := binary.Varint(posData[index:])
+	if n <= 0 {
+		return nil, fmt.Errorf("failed to decode Offset")
+	}
+	pos.Offset = int(offset)
+
+	return pos, nil
 }

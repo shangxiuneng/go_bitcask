@@ -47,3 +47,15 @@ func TestDecodeRecordHeader(t *testing.T) {
 	assert.Equal(t, headerInfo.crc, uint32(1927659431)) // 1927659431
 	assert.Equal(t, size, 7)
 }
+
+func TestEncodeRecordPos(t *testing.T) {
+	pos := &RecordPos{
+		FileID: 1,
+		Offset: 100,
+	}
+
+	posData := EncodeRecordPos(pos)
+	gotPos, err := DecodeRecordPos(posData)
+	assert.Nil(t, err)
+	assert.Equal(t, pos, gotPos)
+}

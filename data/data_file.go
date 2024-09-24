@@ -16,6 +16,10 @@ type DataFile struct {
 	IOManager   fio.IOManager
 }
 
+var (
+	MergeFinFileName = ""
+)
+
 // NewDataFile 创建一个DataFile
 func NewDataFile(dirPath string, fileID int) (*DataFile, error) {
 	if dirPath == "" {
@@ -27,10 +31,18 @@ func NewDataFile(dirPath string, fileID int) (*DataFile, error) {
 	return newDataFile(fileName, fileID)
 }
 
+func GetFileName(dirPath string, fileID int) string {
+	return filepath.Join(dirPath, fmt.Sprintf("%09d", fileID)+".data")
+}
+
 // NewHintFile 打开一个hint文件
 func NewHintFile(dirPath string) (*DataFile, error) {
 	fileName := filepath.Join(dirPath)
 	return newDataFile(fileName, 0)
+}
+
+func NewMergeFinFile(dirPath string) (*DataFile, error) {
+	return nil, nil
 }
 
 func newDataFile(fileName string, fileID int) (*DataFile, error) {
