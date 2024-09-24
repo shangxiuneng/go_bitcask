@@ -1,6 +1,7 @@
 package index
 
 import (
+	"github.com/rs/zerolog/log"
 	"go_bitcask/data"
 )
 
@@ -27,6 +28,10 @@ func NewIndex(indexType IndexType) Index {
 	switch indexType {
 	case BTreeIndex:
 		return newBTree(32)
+	case HashIndex:
+		return newHashIndex()
+	default:
+		log.Error().Msgf("undefined index type = %v", indexType)
 	}
 
 	return nil

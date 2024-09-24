@@ -144,8 +144,10 @@ func GetRecordCRC(r *RecordInfo, headerBuf []byte) uint32 {
 	copy(buf[len(headerBuf):], r.Key)
 	copy(buf[len(headerBuf)+len(r.Key):], r.Value)
 
-	// buf := []byte{1, 2, 22, 49, 104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100}
-
 	return crc32.ChecksumIEEE(buf)
 
+}
+
+func EncodeRecordPos(pos *RecordPos) []byte {
+	return nil
 }

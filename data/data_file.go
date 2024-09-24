@@ -24,6 +24,17 @@ func NewDataFile(dirPath string, fileID int) (*DataFile, error) {
 
 	fileName := filepath.Join(dirPath, fmt.Sprintf("%09d", fileID)+".data")
 
+	return newDataFile(fileName, fileID)
+}
+
+// NewHintFile 打开一个hint文件
+func NewHintFile(dirPath string) (*DataFile, error) {
+	fileName := filepath.Join(dirPath)
+	return newDataFile(fileName, 0)
+}
+
+func newDataFile(fileName string, fileID int) (*DataFile, error) {
+
 	log.Info().Msgf("fileName = %v", fileName)
 
 	ioManager, err := fio.NewIOManager(fileName)
@@ -131,4 +142,15 @@ func (d *DataFile) readFromOffset(n int, offset int) ([]byte, error) {
 	buf := make([]byte, n)
 	_, err := d.IOManager.Read(buf, int64(offset))
 	return buf, err
+}
+
+func (d *DataFile) WriteHintFile(key []byte, pos *RecordPos) error {
+	recordInfo := &RecordInfo{
+		Key:   key,
+		Value: EncodeRecordPos(pos),
+	}
+
+	recordData, _ := EncodeRecord(recordInfo)
+
+	return d.Write(recordData)
 }

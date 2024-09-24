@@ -21,6 +21,7 @@ type DB struct {
 	index       index.Index            // 内存索引
 	fileIDs     []int                  // 文件id 加载索引使用
 	seqNo       int32                  // 事务编号
+	isMerge     bool                   // 是否正在merge
 }
 
 func Open(option Config) (*DB, error) {

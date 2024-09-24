@@ -139,10 +139,12 @@ func (w *WriteBatch) Commit() error {
 	return nil
 }
 
+// 编码后的key
 func encodeKeyWithSeqNo(key []byte, seqNo int32) []byte {
 	return nil
 }
 
+// 返回值 key seqNo
 func parseKeyWithSeqNo(key []byte) ([]byte, int32) {
 	return nil, 0
 }
