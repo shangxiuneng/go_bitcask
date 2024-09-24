@@ -60,6 +60,7 @@ func Open(option Config) (*DB, error) {
 	return db, nil
 }
 
+// 校验db的配置是否合理
 func checkDBConfig(option Config) error {
 	if option.DirPath == "" {
 		return errors.New("dir is nil")
@@ -80,6 +81,8 @@ func (d *DB) loadIndex() error {
 	}
 
 	fileIDs := d.fileIDs
+	currSeqNo := int32(0)
+	trxRecordMapping := make(map[int32][]*data.TrxRecord)
 
 	for i, fileID := range fileIDs {
 		dataFile := &data.DataFile{}
@@ -106,15 +109,33 @@ func (d *DB) loadIndex() error {
 				return err
 			}
 
-			pos := data.RecordPos{
+			realKey, seqNo := parseKeyWithSeqNo(recordInfo.Key)
+			// 不是事务操作 则直接更新内存索引
+			pos := &data.RecordPos{
 				FileID: fileID,
 				Offset: offset,
 			}
 
-			if recordInfo.Type == data.DeleteRecord {
-				d.index.Delete(recordInfo.Key)
+			if seqNo == noTrxSeqNo {
+				d.updateIndex(realKey, recordInfo, pos)
 			} else {
-				d.index.Put(recordInfo.Key, &pos)
+				if recordInfo.Type == 3 {
+					// 事务完成的标志
+					for _, v := range trxRecordMapping[seqNo] {
+						d.updateIndex(v.RecordInfo.Key, v.RecordInfo, v.Pos)
+					}
+					delete(trxRecordMapping, seqNo)
+				} else {
+					trxRecordMapping[seqNo] = append(trxRecordMapping[seqNo], &data.TrxRecord{
+						RecordInfo: recordInfo,
+						Pos:        pos,
+					})
+
+				}
+			}
+
+			if seqNo > currSeqNo {
+				currSeqNo = seqNo
 			}
 
 			offset = offset + recordSize
@@ -124,9 +145,20 @@ func (d *DB) loadIndex() error {
 			}
 		}
 	}
+
+	d.seqNo = currSeqNo
 	return nil
 }
 
+func (d *DB) updateIndex(realKey []byte, recordInfo *data.RecordInfo, pos *data.RecordPos) {
+	if recordInfo.Type == data.DeleteRecord {
+		d.index.Delete(realKey)
+	} else {
+		d.index.Put(realKey, pos)
+	}
+}
+
+// 加载数据文件
 func (d *DB) loadDataFiles() error {
 	// 通过配置项把目录读取出来
 	dirEntries, err := os.ReadDir(d.options.DirPath)
@@ -177,7 +209,7 @@ func (d *DB) Put(key []byte, value []byte) error {
 	}
 
 	record := data.RecordInfo{
-		Key:   key,
+		Key:   encodeKeyWithSeqNo(key, noTrxSeqNo),
 		Value: value,
 		Type:  1,
 	}

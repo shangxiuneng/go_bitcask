@@ -24,6 +24,11 @@ type RecordInfo struct {
 	Type  RecordType // 记录的类型
 }
 
+type TrxRecord struct {
+	RecordInfo *RecordInfo
+	Pos        *RecordPos
+}
+
 type RecordHeader struct {
 	crc        uint32     // crc校验
 	recordType RecordType // 记录类型

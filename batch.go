@@ -16,7 +16,8 @@ type WriteBatch struct {
 }
 
 var (
-	txKey = []byte("txn-fin")
+	txKey      = []byte("txn-fin")
+	noTrxSeqNo = int32(0) // 非事务的操作
 )
 
 func NewWriteBatch(db *DB, config BatchConfig) WriteBatch {
@@ -91,7 +92,7 @@ func (w *WriteBatch) Commit() error {
 	positionMapping := make(map[string]*data.RecordPos, 0)
 	for _, v := range w.kvMapping {
 		pos, err := w.db.appendRecord(&data.RecordInfo{
-			Key:   codingKeyWithSeqNo(v.Key, seqNo),
+			Key:   encodeKeyWithSeqNo(v.Key, seqNo),
 			Value: v.Value,
 			Type:  1,
 		})
@@ -138,8 +139,12 @@ func (w *WriteBatch) Commit() error {
 	return nil
 }
 
-func codingKeyWithSeqNo(key []byte, seqNo int32) []byte {
+func encodeKeyWithSeqNo(key []byte, seqNo int32) []byte {
 	return nil
+}
+
+func parseKeyWithSeqNo(key []byte) ([]byte, int32) {
+	return nil, 0
 }
 
 // RollBack 回滚
