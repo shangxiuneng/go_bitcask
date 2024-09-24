@@ -16,3 +16,10 @@ type IteratorConfig struct {
 	// 是否反向遍历  默认为false 正向遍历
 	Reverse bool
 }
+
+// BatchConfig 批量操作的配置
+type BatchConfig struct {
+	MaxBatchNum int // 一次事务最多能写入多少数据
+	// TODO 可以做更精细的配置 比如事务的长度达到多少自动持久化
+	SyncWrite bool // 是否每次都执行持久化
+}

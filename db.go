@@ -20,6 +20,7 @@ type DB struct {
 	options     Config                 // 配置项
 	index       index.Index            // 内存索引
 	fileIDs     []int                  // 文件id 加载索引使用
+	seqNo       int32                  // 事务编号
 }
 
 func Open(option Config) (*DB, error) {
