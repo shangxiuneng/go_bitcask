@@ -48,7 +48,79 @@ func (h *Hash) Delete(key []byte) error {
 
 	return nil
 }
-
 func (h *Hash) Iterator(reverse bool) Iterator {
-	return nil
+	return newHashIterator(h.m, reverse)
+}
+
+type hashIterator struct {
+	Iterator
+
+	currIndex int
+	reverse   bool    // 是否为反向遍历
+	values    []*Item // key位置对应的value
+}
+
+func newHashIterator(hash map[string]*data.RecordPos, reverse bool) Iterator {
+
+	idx := 0
+	items := make([]*Item, len(hash))
+
+	for key, value := range hash {
+		items[idx] = &Item{
+			key:    []byte(key),
+			record: value,
+		}
+		idx++
+	}
+
+	// TODO 对items进行一个排序
+
+	return &hashIterator{
+		currIndex: 0,
+		reverse:   reverse,
+		values:    items,
+	}
+
+}
+
+// Rewind 重新回到迭代器的起点
+func (h *hashIterator) Rewind() {
+	h.currIndex = 0
+	return
+}
+
+// Seek 根据传入的key，查找到第一个大于或小于目标的key 从这个key开始遍历
+func (h *hashIterator) Seek(key []byte) {
+
+	return
+}
+
+func (h *hashIterator) Next() {
+	h.currIndex++
+}
+
+// Valid 当前迭代器是否有效
+func (h *hashIterator) Valid() bool {
+	return h.currIndex < len(h.values)
+}
+
+// Key 当前迭代器指向的key数据
+func (h *hashIterator) Key() []byte {
+	if !h.Valid() {
+		return nil
+	}
+	return h.values[h.currIndex].key
+}
+
+func (h *hashIterator) Value() *data.RecordPos {
+	if !h.Valid() {
+		return nil
+	}
+	return h.values[h.currIndex].record
+}
+
+// Close 关闭迭代器 释放相应的资源
+func (h *hashIterator) Close() {
+	h.values = nil
+	h.currIndex = len(h.values) + 1
 }

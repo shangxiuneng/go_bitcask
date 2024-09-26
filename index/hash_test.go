@@ -1,6 +1,7 @@
 package index
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"go_bitcask/data"
 	"strconv"
@@ -28,6 +29,7 @@ func TestHash_Put(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+// 并发写入
 func TestHash_Put2(t *testing.T) {
 	var wg sync.WaitGroup
 
@@ -93,4 +95,26 @@ func TestHash_Delete(t *testing.T) {
 	assert.Nil(t, err)
 	pos, err = hashIndex.Get([]byte("key"))
 	assert.NotNil(t, err)
+}
+
+// TODO
+func TestHash_Iterator(t *testing.T) {
+	hash := map[string]*data.RecordPos{
+		"k1": &data.RecordPos{
+			FileID: 1,
+			Offset: 10,
+		},
+		"k2": &data.RecordPos{
+			FileID: 1,
+			Offset: 20,
+		},
+		"k3": &data.RecordPos{
+			FileID: 1,
+			Offset: 30,
+		},
+	}
+	it := newHashIterator(hash, false)
+	fmt.Println(string(it.Key()))
+	it.Next()
+	fmt.Println(string(it.Key()))
 }

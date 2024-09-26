@@ -21,15 +21,24 @@ const (
 	BTreeIndex IndexType = 1
 	// HashIndex 哈希索引
 	HashIndex IndexType = 2
+	// ArtIndex art树索引
+	ArtIndex IndexType = 3
+	// BPlusIndex b+树索引
+	BPlusIndex IndexType = 4
 )
 
 // NewIndex 可能有多种内存索引
-func NewIndex(indexType IndexType) Index {
+// TODO 设计为可选参数比较好
+func NewIndex(indexType IndexType, dirPath string, syncWrite bool) Index {
 	switch indexType {
 	case BTreeIndex:
 		return newBTree(32)
 	case HashIndex:
 		return newHashIndex()
+	case ArtIndex:
+		return newArtTree()
+	case BPlusIndex:
+		return newBPlusTree(dirPath, syncWrite)
 	default:
 		log.Error().Msgf("undefined index type = %v", indexType)
 	}

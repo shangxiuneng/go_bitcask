@@ -18,6 +18,7 @@ type DataFile struct {
 
 var (
 	MergeFinFileName = ""
+	SeqNoFileName    = ""
 )
 
 // NewDataFile 创建一个DataFile
@@ -62,6 +63,11 @@ func newDataFile(fileName string, fileID int) (*DataFile, error) {
 	}
 
 	return &dataFile, nil
+}
+
+func NewSeqNumFile(dirPath string) (*DataFile, error) {
+	fileName := filepath.Join(dirPath, SeqNoFileName)
+	return newDataFile(fileName, 0)
 }
 
 func (d *DataFile) Sync() error {

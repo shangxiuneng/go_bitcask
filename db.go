@@ -44,16 +44,12 @@ func Open(option Config) (*DB, error) {
 		options:     option,
 		lock:        new(sync.Mutex),
 		fileMapping: map[int]*data.DataFile{},
-		index:       index.NewIndex(index.BTreeIndex),
+		index:       index.NewIndex(index.BTreeIndex, "", false),
 	}
 
 	if err := db.loadMergeFile(); err != nil {
 		log.Error().Msgf("loadMergeFile error,er = %v", err)
 		return nil, err
-	}
-
-	if err := db.loadHintFile(); err != nil {
-
 	}
 
 	// 加载对应的数据文件
@@ -62,10 +58,24 @@ func Open(option Config) (*DB, error) {
 		return nil, err
 	}
 
-	// 构造索引
-	if err := db.loadIndex(); err != nil {
-		log.Error().Msgf("loadIndex error,err = %v", err)
-		return nil, err
+	if option.IndexType != index.BPlusIndex {
+		// b+树不从磁盘上加载索引
+		// TODO 如果第一次使用的是hash 后面又改成了b+ 会有问题
+		// 加载对应的hint文件
+		if err := db.loadHintFile(); err != nil {
+			log.Error().Msgf("loadHintFile error,err = %v", err)
+			return nil, err
+		}
+		// 构造索引
+		if err := db.loadIndex(); err != nil {
+			log.Error().Msgf("loadIndex error,err = %v", err)
+			return nil, err
+		}
+	}
+
+	if option.IndexType == index.BPlusIndex {
+		// 加载seqNo
+
 	}
 
 	return db, nil
@@ -416,10 +426,36 @@ func (d *DB) Close() error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
+	// 保存当前事务序列号
+	seqFile, err := data.NewSeqNumFile(d.options.DirPath)
+	if err != nil {
+		log.Error().Msgf("NewSeqNumFile error,err = %v", err)
+		return err
+	}
+
+	seqRecord := &data.RecordInfo{
+		Key:   []byte{},
+		Value: []byte(strconv.Itoa(int(d.seqNo))),
+	}
+
+	dataSeqRecord, _ := data.EncodeRecord(seqRecord)
+
+	if err := seqFile.Write(dataSeqRecord); err != nil {
+		log.Error().Msgf("Write error,err = %v", err)
+		return err
+	}
+
+	if err := seqFile.Sync(); err != nil {
+		log.Error().Msgf("Write error,err = %v", err)
+		return err
+	}
+
+	// 关闭当前活跃文件
 	if err := d.activeFile.Close(); err != nil {
 		return err
 	}
 
+	// 关闭旧数据文件
 	for _, file := range d.fileMapping {
 		if err := file.Close(); err != nil {
 			return err
