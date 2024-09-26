@@ -17,8 +17,9 @@ type DataFile struct {
 }
 
 var (
-	MergeFinFileName = ""
-	SeqNoFileName    = ""
+	// MergeFinFileName merge结束的文件
+	MergeFinFileName = "merge_fin_file"
+	SeqNoFileName    = "seq-no-file"
 	// DataFileNameSuffix 数据文件的后缀
 	DataFileNameSuffix = ".data"
 )
@@ -45,6 +46,7 @@ func NewHintFile(dirPath string) (*DataFile, error) {
 	return newDataFile(fileName, 0)
 }
 
+// NewMergeFinFile 打开一个merge文件  TODO 未实现
 func NewMergeFinFile(dirPath string) (*DataFile, error) {
 	return nil, nil
 }

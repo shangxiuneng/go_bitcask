@@ -6,6 +6,7 @@ import (
 	"go_bitcask/data"
 	"go_bitcask/index"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -26,15 +27,14 @@ type DB struct {
 	isSeqFileExist bool                   // 存储事务编号的文件是否存在
 }
 
-func Open(option Config) (*DB, error) {
-	// TODO 校验配置项
-	if err := checkDBConfig(option); err != nil {
+func Open(conf Config) (*DB, error) {
+	if err := checkDBConfig(conf); err != nil {
 		return nil, err
 	}
 
-	if _, err := os.Stat(option.DirPath); os.IsNotExist(err) {
+	if _, err := os.Stat(conf.DirPath); os.IsNotExist(err) {
 		// 创建目录
-		if err := os.MkdirAll(option.DirPath, os.ModePerm); err != nil {
+		if err := os.MkdirAll(conf.DirPath, os.ModePerm); err != nil {
 			log.Error().Msgf("MkdirAll error,err = %v", err)
 			return nil, err
 		}
@@ -42,7 +42,7 @@ func Open(option Config) (*DB, error) {
 	}
 
 	db := &DB{
-		options:     option,
+		options:     conf,
 		lock:        new(sync.Mutex),
 		fileMapping: map[int]*data.DataFile{},
 		index:       index.NewIndex(index.BTreeIndex, "", false),
@@ -59,7 +59,7 @@ func Open(option Config) (*DB, error) {
 		return nil, err
 	}
 
-	if option.IndexType != index.BPlusIndex {
+	if conf.IndexType != index.BPlusIndex {
 		// b+树不从磁盘上加载索引
 		// TODO 如果第一次使用的是hash 后面又改成了b+ 会有问题
 		// 加载对应的hint文件
@@ -74,7 +74,7 @@ func Open(option Config) (*DB, error) {
 		}
 	}
 
-	if option.IndexType == index.BPlusIndex {
+	if conf.IndexType == index.BPlusIndex {
 		// 加载seqNo
 
 	}
@@ -102,7 +102,6 @@ func (d *DB) loadIndex() error {
 		return nil
 	}
 
-	fileIDs := d.fileIDs
 	currSeqNo := int32(0)
 	trxRecordMapping := make(map[int32][]*data.TrxRecord)
 
@@ -110,7 +109,8 @@ func (d *DB) loadIndex() error {
 	noMergeFileID := 0
 
 	mergeFileName := filepath.Join(d.options.DirPath, data.MergeFinFileName)
-	if _, err := os.Stat(mergeFileName); err == nil {
+	_, err := os.Stat(mergeFileName)
+	if !errors.Is(err, fs.ErrNotExist) {
 		var err error
 		noMergeFileID, err = d.getNoMergeFileID(mergeFileName)
 		if err != nil {
@@ -120,6 +120,7 @@ func (d *DB) loadIndex() error {
 		hasMerge = true
 	}
 
+	fileIDs := d.fileIDs
 	for i, fileID := range fileIDs {
 
 		if hasMerge && fileID < noMergeFileID {
@@ -303,7 +304,7 @@ func (d *DB) appendRecord(record *data.RecordInfo) (*data.RecordPos, error) {
 
 	d.activeFile.Write(enRecord)
 
-	if d.options.SyncWrite {
+	if d.options.SyncWrites {
 		if err := d.activeFile.Sync(); err != nil {
 			log.Error().Msgf("appendRecord error,err = %v", err)
 			return nil, err
