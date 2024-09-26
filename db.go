@@ -2,8 +2,10 @@ package go_bitcask
 
 import (
 	"errors"
+	"github.com/gofrs/flock"
 	"github.com/rs/zerolog/log"
 	"go_bitcask/data"
+	"go_bitcask/fio"
 	"go_bitcask/index"
 	"io"
 	"io/fs"
@@ -13,6 +15,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+)
+
+var (
+	fileLockName = "file_lock"
 )
 
 type DB struct {
@@ -25,6 +31,8 @@ type DB struct {
 	seqNo          int32                  // 事务编号
 	isMerge        bool                   // 是否正在merge
 	isSeqFileExist bool                   // 存储事务编号的文件是否存在
+	fileLock       *flock.Flock
+	bytesWrite     int // 累计写了多少字节
 }
 
 func Open(conf Config) (*DB, error) {
@@ -41,11 +49,28 @@ func Open(conf Config) (*DB, error) {
 		log.Info().Msg("mkdir success")
 	}
 
+	// 文件锁
+	fileLock := flock.New(filepath.Join(conf.DirPath, fileLockName))
+	if fileLock == nil {
+		return nil, errors.New("file lock is nil")
+	}
+
+	hold, err := fileLock.TryLock()
+	if err != nil {
+		log.Error().Msgf("error,err = %v", err)
+		return nil, err
+	}
+
+	if !hold {
+		return nil, errors.New("hold is false")
+	}
+
 	db := &DB{
 		options:     conf,
 		lock:        new(sync.Mutex),
 		fileMapping: map[int]*data.DataFile{},
 		index:       index.NewIndex(index.BTreeIndex, "", false),
+		fileLock:    fileLock,
 	}
 
 	if err := db.loadMergeFile(); err != nil {
@@ -77,6 +102,13 @@ func Open(conf Config) (*DB, error) {
 	if conf.IndexType == index.BPlusIndex {
 		// 加载seqNo
 
+	}
+
+	if conf.MMapStartup {
+		if err := db.resetIOType(fio.StandardIO); err != nil {
+			log.Error().Msgf("resetIOType error,err = %v", err)
+			return nil, err
+		}
 	}
 
 	return db, nil
@@ -226,7 +258,7 @@ func (d *DB) loadDataFiles() error {
 
 	// 遍历文件id 获取文件句柄
 	for i, fileID := range fileIDs {
-		dataFile, err := data.NewDataFile(d.options.DirPath, fileID)
+		dataFile, err := data.NewDataFile(d.options.DirPath, fileID, fio.StandardIO)
 		if err != nil {
 			log.Error().Msgf("OpenDataFile error,err = %v", err)
 			return err
@@ -304,11 +336,22 @@ func (d *DB) appendRecord(record *data.RecordInfo) (*data.RecordPos, error) {
 
 	d.activeFile.Write(enRecord)
 
-	if d.options.SyncWrites {
+	syncWrites := d.options.SyncWrites
+
+	if !syncWrites && d.options.BytesPerSync > 0 && d.bytesWrite > d.options.BytesPerSync {
+		syncWrites = true
+	}
+
+	// TODO 这里需要记录每次写入的字节数 没实现
+	if syncWrites {
 		if err := d.activeFile.Sync(); err != nil {
 			log.Error().Msgf("appendRecord error,err = %v", err)
 			return nil, err
 		}
+		if d.bytesWrite > 0 {
+			d.bytesWrite = 0
+		}
+		syncWrites = false
 	}
 
 	return &data.RecordPos{
@@ -324,7 +367,7 @@ func (d *DB) setActiveFile() error {
 		fileID = d.activeFile.FileID + 1
 	}
 
-	dataFile, err := data.NewDataFile(d.options.DirPath, fileID)
+	dataFile, err := data.NewDataFile(d.options.DirPath, fileID, fio.StandardIO)
 	if err != nil {
 		log.Error().Msgf("NewDataFile error,err = %v", err)
 		return err
@@ -421,6 +464,14 @@ func (d *DB) Delete(key []byte) error {
 
 // Close 关闭数据库
 func (d *DB) Close() error {
+
+	defer func() {
+		if err := d.fileLock.Unlock(); err != nil {
+			log.Error().Msgf("file lock unlock error,err = %v", err)
+			return
+		}
+	}()
+
 	if d.activeFile == nil {
 		return nil
 	}
@@ -511,5 +562,18 @@ func (d *DB) Sync() error {
 
 func (d *DB) loadSeqNum() error {
 	d.isSeqFileExist = true
+	return nil
+}
+
+// 重置io类型 TODO 这个函数改一下命名也可以
+func (d *DB) resetIOType(ioType fio.FileIOType) error {
+	if d.activeFile == nil {
+		return nil
+	}
+
+	if err := d.activeFile.SetIOManager(d.options.DirPath, ioType); err != nil {
+		return err
+	}
+
 	return nil
 }

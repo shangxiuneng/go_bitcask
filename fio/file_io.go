@@ -9,7 +9,7 @@ type FileIO struct {
 	fd *os.File
 }
 
-func NewFileIO(fileName string) (IOManager, error) {
+func newFileIO(fileName string) (IOManager, error) {
 	// 文件不存在 则创建对应的文件
 	fd, err := os.OpenFile(fileName,
 		os.O_CREATE|os.O_RDWR|os.O_APPEND,

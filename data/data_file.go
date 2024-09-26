@@ -13,7 +13,8 @@ import (
 type DataFile struct {
 	FileID      int
 	WriteOffSet int
-	IOManager   fio.IOManager
+
+	IOManager fio.IOManager
 }
 
 var (
@@ -25,14 +26,14 @@ var (
 )
 
 // NewDataFile 返回数据文件
-func NewDataFile(dirPath string, fileID int) (*DataFile, error) {
+func NewDataFile(dirPath string, fileID int, ioType fio.FileIOType) (*DataFile, error) {
 	if dirPath == "" {
 		return nil, errors.New("文件路径为空")
 	}
 
 	fileName := filepath.Join(dirPath, fmt.Sprintf("%09d", fileID)+DataFileNameSuffix)
 
-	return newDataFile(fileName, fileID)
+	return newDataFile(fileName, fileID, ioType)
 }
 
 // GetDataFileName 获取数据文件名
@@ -43,7 +44,7 @@ func GetDataFileName(dirPath string, fileID int) string {
 // NewHintFile 打开一个hint文件
 func NewHintFile(dirPath string) (*DataFile, error) {
 	fileName := filepath.Join(dirPath)
-	return newDataFile(fileName, 0)
+	return newDataFile(fileName, 0, fio.StandardIO)
 }
 
 // NewMergeFinFile 打开一个merge文件  TODO 未实现
@@ -51,11 +52,11 @@ func NewMergeFinFile(dirPath string) (*DataFile, error) {
 	return nil, nil
 }
 
-func newDataFile(fileName string, fileID int) (*DataFile, error) {
+func newDataFile(fileName string, fileID int, ioType fio.FileIOType) (*DataFile, error) {
 
 	log.Info().Msgf("fileName = %v", fileName)
 
-	ioManager, err := fio.NewIOManager(fileName)
+	ioManager, err := fio.NewIOManager(fileName, ioType)
 	if err != nil {
 		log.Error().Msgf("OpenDataFile error,err = %v", err)
 		return nil, err
@@ -72,7 +73,7 @@ func newDataFile(fileName string, fileID int) (*DataFile, error) {
 
 func NewSeqNumFile(dirPath string) (*DataFile, error) {
 	fileName := filepath.Join(dirPath, SeqNoFileName)
-	return newDataFile(fileName, 0)
+	return newDataFile(fileName, 0, fio.StandardIO)
 }
 
 func (d *DataFile) Sync() error {
@@ -176,4 +177,19 @@ func (d *DataFile) WriteHintFile(key []byte, pos *RecordPos) error {
 	recordData, _ := EncodeRecord(recordInfo)
 
 	return d.Write(recordData)
+}
+
+func (d *DataFile) SetIOManager(dirPath string, ioType fio.FileIOType) error {
+	if err := d.IOManager.Close(); err != nil {
+		return err
+	}
+
+	ioManager, err := fio.NewIOManager(GetDataFileName(dirPath, d.FileID), ioType)
+	if err != nil {
+		return err
+	}
+
+	d.IOManager = ioManager
+
+	return nil
 }

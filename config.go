@@ -8,7 +8,9 @@ type Config struct {
 	DirPath      string          // 文件的路径
 	DataFileSize int             // 每一个文件的大小
 	SyncWrites   bool            // 是否每次写完都进行持久化配置
+	BytesPerSync int             // 达到累计的阈值 进行持久化
 	IndexType    index.IndexType // 索引类型
+	MMapStartup  bool            // 是否指定mmap的加载
 }
 
 type IteratorConfig struct {
@@ -31,4 +33,6 @@ var DefaultConfig = Config{
 	DataFileSize: 256 * 1024 * 1024, // 256MB
 	SyncWrites:   false,
 	IndexType:    index.HashIndex,
+	BytesPerSync: 0, // 0 表示不开启该功能
+	MMapStartup:  true,
 }
