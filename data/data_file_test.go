@@ -11,6 +11,7 @@ func TestNewDataFile(t *testing.T) {
 	// dirPath为空
 	dataFile, err := NewDataFile("", 1)
 	assert.NotNil(t, err)
+	t.Logf("NewDataFile error,err = %v", err)
 	assert.Nil(t, dataFile)
 
 	// 正常测试用例
@@ -39,8 +40,32 @@ func TestDataFile_Write(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestDataFile_ReadRecord(t *testing.T) {
+func TestDataFile_Close(t *testing.T) {
 	dataFile, err := NewDataFile("temp", 1)
+	assert.Nil(t, err)
+	assert.NotNil(t, dataFile)
+
+	err = dataFile.Write([]byte("aaa"))
+	assert.Nil(t, err)
+
+	err = dataFile.Close()
+	assert.Nil(t, err)
+}
+
+func TestDataFile_Sync(t *testing.T) {
+	dataFile, err := NewDataFile("temp", 2)
+	assert.Nil(t, err)
+	assert.NotNil(t, dataFile)
+
+	err = dataFile.Write([]byte("aaa"))
+	assert.Nil(t, err)
+
+	err = dataFile.Sync()
+	assert.Nil(t, err)
+}
+
+func TestDataFile_ReadRecord(t *testing.T) {
+	dataFile, err := NewDataFile("temp", 10)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 
@@ -50,6 +75,7 @@ func TestDataFile_ReadRecord(t *testing.T) {
 		Value: []byte("hello world"),
 		Type:  1,
 	}
+
 	recordBuf, size := EncodeRecord(recordInfo)
 
 	err = dataFile.Write(recordBuf)

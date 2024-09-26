@@ -40,9 +40,18 @@ func (b *BTree) Put(key []byte, record *data.RecordPos) error {
 
 // Get 获取一条数据
 func (b *BTree) Get(key []byte) (*data.RecordPos, error) {
+	if len(key) == 0 {
+		return nil, errors.New("key is nil")
+	}
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
 	item := b.tree.Get(&Item{
 		key: key,
 	})
+	if item == nil {
+		return nil, nil
+	}
 	return item.(*Item).record, nil
 }
 
@@ -61,6 +70,7 @@ func (b *BTree) Delete(key []byte) error {
 	return nil
 }
 
+// Iterator 迭代器
 func (b *BTree) Iterator(reverse bool) Iterator {
 	return NewBTreeIterator(b.tree, reverse)
 }

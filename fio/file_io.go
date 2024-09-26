@@ -10,7 +10,10 @@ type FileIO struct {
 }
 
 func NewFileIO(fileName string) (IOManager, error) {
-	fd, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
+	// 文件不存在 则创建对应的文件
+	fd, err := os.OpenFile(fileName,
+		os.O_CREATE|os.O_RDWR|os.O_APPEND,
+		0644)
 	if err != nil {
 		log.Error().Msgf("NewFileIO error,err = %v", err)
 		return nil, err

@@ -15,14 +15,15 @@ import (
 )
 
 type DB struct {
-	lock        *sync.Mutex
-	activeFile  *data.DataFile         // 当前获取的文件
-	fileMapping map[int]*data.DataFile // 保存文件id到文件句柄的映射
-	options     Config                 // 配置项
-	index       index.Index            // 内存索引
-	fileIDs     []int                  // 文件id 加载索引使用
-	seqNo       int32                  // 事务编号
-	isMerge     bool                   // 是否正在merge
+	lock           *sync.Mutex
+	activeFile     *data.DataFile         // 当前获取的文件
+	fileMapping    map[int]*data.DataFile // 保存文件id到文件句柄的映射
+	options        Config                 // 配置项
+	index          index.Index            // 内存索引
+	fileIDs        []int                  // 文件id 加载索引使用
+	seqNo          int32                  // 事务编号
+	isMerge        bool                   // 是否正在merge
+	isSeqFileExist bool                   // 存储事务编号的文件是否存在
 }
 
 func Open(option Config) (*DB, error) {
@@ -505,4 +506,9 @@ func (d *DB) Sync() error {
 	}
 
 	return d.activeFile.Sync()
+}
+
+func (d *DB) loadSeqNum() error {
+	d.isSeqFileExist = true
+	return nil
 }

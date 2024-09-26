@@ -9,7 +9,6 @@ type Index interface {
 	Put(key []byte, record *data.RecordPos) error
 	Get(key []byte) (*data.RecordPos, error)
 	Delete(key []byte) error
-
 	Iterator(reverse bool) Iterator
 }
 

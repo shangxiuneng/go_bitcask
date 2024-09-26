@@ -183,7 +183,7 @@ func (d *DB) loadMergeFile() error {
 	for _, v := range d.fileMapping {
 		if v.FileID < noMergeFileID {
 			// 说明当前的文件已经被merge处理过 可以删除
-			filePath := data.GetFileName(mergePath, 0)
+			filePath := data.GetDataFileName(mergePath, 0)
 			if _, err := os.Stat(filePath); err == nil {
 				if err := os.RemoveAll(filePath); err != nil {
 					log.Error().Msgf("RemoveAll error,err = %v", err)

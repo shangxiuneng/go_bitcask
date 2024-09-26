@@ -73,8 +73,6 @@ func EncodeRecord(recordInfo *RecordInfo) ([]byte, int) {
 
 	crc := crc32.ChecksumIEEE(recordBuf[4:])
 
-	fmt.Println(crc)
-
 	binary.LittleEndian.PutUint32(recordBuf[:4], crc)
 
 	return recordBuf, totalSize

@@ -7,21 +7,48 @@ import (
 )
 
 /*
-Key        []byte
-Value      []byte
-RecordType byte // 记录的类型
+case
+1. 正常情况
+2. tx的记录
+3. 删除的记录
+4. value为nil
+5. key为nil
 */
 func TestEncodeRecord(t *testing.T) {
-	rec1 := &RecordInfo{
-		Key:   []byte("1"),
-		Value: []byte("hello world"),
-		Type:  1,
+
+	tests := []struct {
+		param      *RecordInfo
+		result     []byte
+		encodeSize int
+	}{
+		{
+			param: &RecordInfo{
+				Key:   []byte("1"),
+				Value: []byte("hello world"),
+				Type:  NormalRecord,
+			},
+			result:     []byte{167, 191, 229, 114, 1, 2, 22, 49, 104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100},
+			encodeSize: 19,
+		},
+		{
+			param: &RecordInfo{
+				Key:   []byte("1"),
+				Value: nil,
+				Type:  DeleteRecord,
+			},
+			result:     []byte{195, 195, 23, 217, 2, 2, 0, 49},
+			encodeSize: 8,
+		},
 	}
-	res1, n1 := EncodeRecord(rec1)
-	assert.NotNil(t, res1)
-	assert.Equal(t, n1, 19)
-	wantRes := []byte{167, 191, 229, 114, 1, 2, 22, 49, 104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100}
-	assert.Equal(t, res1, wantRes)
+
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			dataRecord, size := EncodeRecord(tt.param)
+			assert.Equal(t, tt.encodeSize, size)
+			assert.Equal(t, tt.result, dataRecord)
+			// fmt.Println(dataRecord)
+		})
+	}
 }
 
 func TestGetRecordCRC(t *testing.T) {

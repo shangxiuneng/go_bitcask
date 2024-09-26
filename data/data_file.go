@@ -19,21 +19,24 @@ type DataFile struct {
 var (
 	MergeFinFileName = ""
 	SeqNoFileName    = ""
+	// DataFileNameSuffix 数据文件的后缀
+	DataFileNameSuffix = ".data"
 )
 
-// NewDataFile 创建一个DataFile
+// NewDataFile 返回数据文件
 func NewDataFile(dirPath string, fileID int) (*DataFile, error) {
 	if dirPath == "" {
 		return nil, errors.New("文件路径为空")
 	}
 
-	fileName := filepath.Join(dirPath, fmt.Sprintf("%09d", fileID)+".data")
+	fileName := filepath.Join(dirPath, fmt.Sprintf("%09d", fileID)+DataFileNameSuffix)
 
 	return newDataFile(fileName, fileID)
 }
 
-func GetFileName(dirPath string, fileID int) string {
-	return filepath.Join(dirPath, fmt.Sprintf("%09d", fileID)+".data")
+// GetDataFileName 获取数据文件名
+func GetDataFileName(dirPath string, fileID int) string {
+	return filepath.Join(dirPath, fmt.Sprintf("%09d", fileID)+DataFileNameSuffix)
 }
 
 // NewHintFile 打开一个hint文件
