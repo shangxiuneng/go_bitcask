@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -33,6 +34,11 @@ type DB struct {
 	isSeqFileExist bool                   // 存储事务编号的文件是否存在
 	fileLock       *flock.Flock
 	bytesWrite     int // 累计写了多少字节
+}
+
+type Static struct {
+	KeyNum      int // key的数量
+	DataFileNum int // 数据文件的数量
 }
 
 func Open(conf Config) (*DB, error) {
@@ -576,4 +582,36 @@ func (d *DB) resetIOType(ioType fio.FileIOType) error {
 	}
 
 	return nil
+}
+
+func (d *DB) GetStaticInfo() *Static {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	fileCnt := len(d.fileMapping)
+
+	if d.activeFile != nil {
+		fileCnt++
+	}
+
+	return &Static{
+		DataFileNum: fileCnt,
+	}
+}
+
+// ExpireKey 对key设置过期时间
+func (d *DB) ExpireKey(key []byte, expireTime int) error {
+
+	return nil
+}
+
+// 异步删除过期的key TODO 删除过期key的功能待实现
+func (d *DB) startExpiryRoutine() {
+	ticker := time.NewTicker(time.Minute * 1) // 每分钟检查一次
+	go func() {
+		for range ticker.C {
+			// 执行删除key的操作
+			// 采样删除 不要遍历全部的key删除
+		}
+	}()
 }
