@@ -399,6 +399,11 @@ func (d *DB) Get(key []byte) ([]byte, error) {
 		return nil, err
 	}
 
+	if recordInfo == nil {
+		// key不存在则返回nil
+		return nil, nil
+	}
+
 	return recordInfo.Value, nil
 }
 
@@ -457,7 +462,7 @@ func (d *DB) Delete(key []byte) error {
 
 	record := data.RecordInfo{
 		Key:  key,
-		Type: 2,
+		Type: data.DeleteRecord,
 	}
 
 	if _, err := d.appendRecord(&record); err != nil {
@@ -537,11 +542,12 @@ func (d *DB) ListKeys() [][]byte {
 	return keys
 }
 
-// Fold 获取的数据 并执行用户指定的操作
+// Fold 获取数据 并执行用户指定的操作
 func (d *DB) Fold(fn func(key []byte, value []byte) bool) error {
 	if fn == nil {
 		return errors.New("fn is nil")
 	}
+
 	it := d.index.Iterator(false)
 	for it.Rewind(); it.Valid(); it.Next() {
 		value, err := d.getValueByPos(it.Value())

@@ -1,6 +1,7 @@
 package data
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"hash/crc32"
 	"testing"
@@ -33,11 +34,29 @@ func TestEncodeRecord(t *testing.T) {
 		{
 			param: &RecordInfo{
 				Key:   []byte("1"),
+				Value: []byte("hello world"),
+				Type:  TransactionRecord,
+			},
+			result:     []byte{54, 14, 99, 218, 3, 2, 22, 49, 104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100},
+			encodeSize: 19,
+		},
+		{
+			param: &RecordInfo{
+				Key:   []byte("1"),
 				Value: nil,
 				Type:  DeleteRecord,
 			},
 			result:     []byte{195, 195, 23, 217, 2, 2, 0, 49},
 			encodeSize: 8,
+		},
+		{
+			param: &RecordInfo{
+				Key:   nil,
+				Value: nil,
+				Type:  DeleteRecord,
+			},
+			result:     []byte{124, 13, 197, 252, 2, 0, 0},
+			encodeSize: 7,
 		},
 	}
 
@@ -46,7 +65,7 @@ func TestEncodeRecord(t *testing.T) {
 			dataRecord, size := EncodeRecord(tt.param)
 			assert.Equal(t, tt.encodeSize, size)
 			assert.Equal(t, tt.result, dataRecord)
-			// fmt.Println(dataRecord)
+			fmt.Println(dataRecord)
 		})
 	}
 }

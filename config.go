@@ -28,7 +28,8 @@ type BatchConfig struct {
 	SyncWrite bool // 是否每次都执行持久化
 }
 
-// DefaultConfig TODO 考虑写成配置函数的方法
+// DefaultConfig 默认配置
+// TODO 考虑写成配置函数的方法
 var DefaultConfig = Config{
 	DataFileSize: 256 * 1024 * 1024, // 256MB
 	SyncWrites:   false,

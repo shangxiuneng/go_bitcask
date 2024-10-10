@@ -2,6 +2,7 @@ package data
 
 import (
 	"github.com/stretchr/testify/assert"
+	"go_bitcask/fio"
 	"io/fs"
 	"os"
 	"testing"
@@ -9,7 +10,7 @@ import (
 
 func TestNewDataFile(t *testing.T) {
 	// dirPath为空
-	dataFile, err := NewDataFile("", 1)
+	dataFile, err := NewDataFile("", 1, fio.StandardIO)
 	assert.NotNil(t, err)
 	t.Logf("NewDataFile error,err = %v", err)
 	assert.Nil(t, dataFile)
@@ -17,7 +18,7 @@ func TestNewDataFile(t *testing.T) {
 	// 正常测试用例
 	err = os.Mkdir("temp", fs.ModeDir)
 	assert.Nil(t, err)
-	dataFile1, err := NewDataFile("temp", 1)
+	dataFile1, err := NewDataFile("temp", 1, fio.StandardIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile1)
 
@@ -26,7 +27,7 @@ func TestNewDataFile(t *testing.T) {
 }
 
 func TestDataFile_Write(t *testing.T) {
-	dataFile, err := NewDataFile("temp", 1)
+	dataFile, err := NewDataFile("temp", 1, fio.StandardIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 
@@ -41,7 +42,7 @@ func TestDataFile_Write(t *testing.T) {
 }
 
 func TestDataFile_Close(t *testing.T) {
-	dataFile, err := NewDataFile("temp", 1)
+	dataFile, err := NewDataFile("temp", 1, fio.StandardIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 
@@ -53,7 +54,7 @@ func TestDataFile_Close(t *testing.T) {
 }
 
 func TestDataFile_Sync(t *testing.T) {
-	dataFile, err := NewDataFile("temp", 2)
+	dataFile, err := NewDataFile("temp", 2, fio.StandardIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 
@@ -65,7 +66,7 @@ func TestDataFile_Sync(t *testing.T) {
 }
 
 func TestDataFile_ReadRecord(t *testing.T) {
-	dataFile, err := NewDataFile("temp", 10)
+	dataFile, err := NewDataFile("temp", 10, fio.StandardIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 

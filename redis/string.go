@@ -15,6 +15,10 @@ func NewService() Service {
 	return Service{}
 }
 
+func (s *Service) findMetaData(key []byte, dataType byte) (*metaData, error) {
+	return nil, nil
+}
+
 // Set string类型的set操作
 func (s *Service) Set(key []byte, value []byte, ttl time.Duration) error {
 	if value == nil {

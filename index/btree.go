@@ -109,12 +109,13 @@ func NewBTreeIterator(tree *btree.BTree, reverse bool) Iterator {
 	}
 }
 
+// Rewind 重新回到迭代器的起点
 func (b *BTreeIterator) Rewind() {
-
+	b.currIndex = 0
 }
 
 func (b *BTreeIterator) Seek(key []byte) {
-
+	panic("err")
 }
 
 func (b *BTreeIterator) Next() {

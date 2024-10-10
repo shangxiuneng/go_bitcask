@@ -16,7 +16,7 @@ func destroyFile(path string) {
 // TODO 需要新建一个文件 temp
 func TestNewFileIO(t *testing.T) {
 	path := filepath.Join("temp", "a.data")
-	fio, err := NewFileIO(path)
+	fio, err := newFileIO(path)
 	defer destroyFile(path)
 
 	assert.Nil(t, err)
@@ -27,7 +27,7 @@ func TestNewFileIO(t *testing.T) {
 
 func TestFileIO_Write(t *testing.T) {
 	path := filepath.Join("temp", "a.data")
-	fio, err := NewFileIO(path)
+	fio, err := newFileIO(path)
 	defer destroyFile(path)
 
 	assert.Nil(t, err)
@@ -47,7 +47,7 @@ func TestFileIO_Write(t *testing.T) {
 
 func TestFileIO_Read(t *testing.T) {
 	path := filepath.Join("temp", "a.data")
-	fio, err := NewFileIO(path)
+	fio, err := newFileIO(path)
 	defer destroyFile(path)
 
 	assert.Nil(t, err)
@@ -62,6 +62,30 @@ func TestFileIO_Read(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 11, n)
 	assert.Equal(t, []byte("hello world"), got)
+
+	err = fio.Close()
+	assert.Nil(t, err)
+}
+
+func TestFileIO_Sync(t *testing.T) {
+	path := filepath.Join("temp", "a.data")
+	fio, err := newFileIO(path)
+	defer destroyFile(path)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, fio)
+
+	err = fio.Sync()
+	assert.Nil(t, err)
+}
+
+func TestFileIO_Close(t *testing.T) {
+	path := filepath.Join("temp", "a.data")
+	fio, err := newFileIO(path)
+	defer destroyFile(path)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, fio)
 
 	err = fio.Close()
 	assert.Nil(t, err)
