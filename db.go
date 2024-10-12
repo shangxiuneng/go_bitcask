@@ -29,11 +29,12 @@ type DB struct {
 	options        Config                 // 配置项
 	index          index.Index            // 内存索引
 	fileIDs        []int                  // 文件id 加载索引使用
-	seqNo          int32                  // 事务编号
+	seqNo          uint64                 // 事务编号
 	isMerge        bool                   // 是否正在merge
 	isSeqFileExist bool                   // 存储事务编号的文件是否存在
-	fileLock       *flock.Flock
-	bytesWrite     int // 累计写了多少字节
+	fileLock       *flock.Flock           // 文件锁
+	bytesWrite     int                    // 累计写了多少字节
+	reclaimSize    int64                  // 表示多少数据是无效的
 }
 
 type Static struct {
@@ -140,8 +141,8 @@ func (d *DB) loadIndex() error {
 		return nil
 	}
 
-	currSeqNo := int32(0)
-	trxRecordMapping := make(map[int32][]*data.TrxRecord)
+	currSeqNo := uint64(0)
+	trxRecordMapping := make(map[uint64][]*data.TrxRecord)
 
 	hasMerge := false
 	noMergeFileID := 0
@@ -189,7 +190,7 @@ func (d *DB) loadIndex() error {
 				return err
 			}
 
-			realKey, seqNo := parseKeyWithSeqNo(recordInfo.Key)
+			realKey, seqNo := decodeKeyWithSeqNo(recordInfo.Key)
 			// 不是事务操作 则直接更新内存索引
 			pos := &data.RecordPos{
 				FileID: fileID,

@@ -20,7 +20,9 @@ type DataFile struct {
 var (
 	// MergeFinFileName merge结束的文件
 	MergeFinFileName = "merge_fin_file"
-	SeqNoFileName    = "seq-no-file"
+	// HintFileName hint文件名
+	HintFileName  = "hint-file"
+	SeqNoFileName = "seq-no-file"
 	// DataFileNameSuffix 数据文件的后缀
 	DataFileNameSuffix = ".data"
 )
@@ -43,13 +45,14 @@ func GetDataFileName(dirPath string, fileID int) string {
 
 // NewHintFile 打开一个hint文件
 func NewHintFile(dirPath string) (*DataFile, error) {
-	fileName := filepath.Join(dirPath)
+	fileName := filepath.Join(dirPath, HintFileName)
 	return newDataFile(fileName, 0, fio.StandardIO)
 }
 
-// NewMergeFinFile 打开一个merge文件  TODO 未实现
+// NewMergeFinFile 打开一个merge文件
 func NewMergeFinFile(dirPath string) (*DataFile, error) {
-	return nil, nil
+	fileName := filepath.Join(dirPath, MergeFinFileName)
+	return newDataFile(fileName, 0, fio.StandardIO)
 }
 
 func newDataFile(fileName string, fileID int, ioType fio.FileIOType) (*DataFile, error) {
@@ -109,9 +112,9 @@ func (d *DataFile) ReadRecord(offset int) (*RecordInfo, int, error) {
 		return nil, 0, err
 	}
 
-	if fileSize == 0 {
-		return nil, 0, errors.New("当前文件为空")
-	}
+	//if fileSize == 0 {
+	//	return nil, 0, errors.New("当前文件为空")
+	//}
 
 	headerSize := maxRecordSize
 

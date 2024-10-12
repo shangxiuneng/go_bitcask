@@ -1,6 +1,8 @@
 package go_bitcask
 
 import (
+	"encoding/binary"
+	"errors"
 	"github.com/rs/zerolog/log"
 	"go_bitcask/data"
 	"sync"
@@ -17,15 +19,21 @@ type WriteBatch struct {
 
 var (
 	txKey      = []byte("txn-fin")
-	noTrxSeqNo = int32(0) // 非事务的操作
+	noTrxSeqNo = uint64(0) // 非事务的操作
 )
 
-func NewWriteBatch(db *DB, config BatchConfig) WriteBatch {
+func (d *DB) NewWriteBatch(config BatchConfig) WriteBatch {
+	/* 前置校验
+	if db.options.IndexType == BPlusTree && !db.seqNoFileExists && !db.isInitial {
+		panic("cannot use write batch, seq no file not exists")
+	}
+	*/
+
 	return WriteBatch{
 		lock:      new(sync.Mutex),
 		config:    config,
 		kvMapping: make(map[string]*data.RecordInfo),
-		db:        db,
+		db:        d,
 	}
 }
 
@@ -41,7 +49,6 @@ func (w *WriteBatch) Put(key []byte, value []byte) error {
 	recordInfo := data.RecordInfo{
 		Key:   key,
 		Value: value,
-		Type:  1,
 	}
 
 	w.kvMapping[string(key)] = &recordInfo
@@ -66,7 +73,7 @@ func (w *WriteBatch) Delete(key []byte) error {
 	} else {
 		recordInfo := data.RecordInfo{
 			Key:  key,
-			Type: 2,
+			Type: data.DeleteRecord,
 		}
 
 		w.kvMapping[string(key)] = &recordInfo
@@ -83,18 +90,24 @@ func (w *WriteBatch) Commit() error {
 		return nil
 	}
 
+	if len(w.kvMapping) > w.config.MaxBatchNum {
+		// 单次提交的事务过长
+		// TODO put和delete的过程中 也要查看事务的长度 不要等到最后提交的时候 才检查事务长度
+		return errors.New("max batch num")
+	}
+
 	w.db.lock.Lock()
 	defer w.db.lock.Unlock()
 
-	seqNo := atomic.AddInt32(&w.db.seqNo, 1)
+	seqNo := atomic.AddUint64(&w.db.seqNo, 1)
 
 	// 写数据到文件中
 	positionMapping := make(map[string]*data.RecordPos, 0)
 	for _, v := range w.kvMapping {
 		pos, err := w.db.appendRecord(&data.RecordInfo{
-			Key:   encodeKeyWithSeqNo(v.Key, seqNo),
+			Key:   encodeKeyWithSeqNo(v.Key, uint64(seqNo)),
 			Value: v.Value,
-			Type:  1,
+			Type:  v.Type,
 		})
 		if err != nil {
 			return err
@@ -106,7 +119,7 @@ func (w *WriteBatch) Commit() error {
 	// 写一条标记事务完成的标记
 	txRecordInfo := &data.RecordInfo{
 		Key:  txKey,
-		Type: 3,
+		Type: data.TransactionRecord,
 	}
 
 	if _, err := w.db.appendRecord(txRecordInfo); err != nil {
@@ -124,12 +137,11 @@ func (w *WriteBatch) Commit() error {
 
 	// 更新内存中的索引信息
 	for _, v := range w.kvMapping {
-		if v.Type == 1 {
-			// 更新索引
+		if v.Type == data.NormalRecord {
 			w.db.index.Put(v.Key, positionMapping[string(v.Key)])
 		}
 
-		if v.Type == 2 {
+		if v.Type == data.DeleteRecord {
 			w.db.index.Delete(v.Key)
 		}
 	}
@@ -140,17 +152,27 @@ func (w *WriteBatch) Commit() error {
 }
 
 // 编码后的key
-func encodeKeyWithSeqNo(key []byte, seqNo int32) []byte {
-	return nil
+func encodeKeyWithSeqNo(key []byte, seqNo uint64) []byte {
+	seqData := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutUvarint(seqData, seqNo)
+
+	res := make([]byte, len(key)+n)
+
+	copy(res[:n], seqData[:n])
+	copy(res[n:], key)
+
+	return res
 }
 
 // 返回值 key seqNo
-func parseKeyWithSeqNo(key []byte) ([]byte, int32) {
-	return nil, 0
+func decodeKeyWithSeqNo(key []byte) ([]byte, uint64) {
+	seqNo, n := binary.Uvarint(key)
+	realKey := key[n:]
+	return realKey, seqNo
 }
 
 // RollBack 回滚
-func (w *WriteBatch) RollBack() {
-	w.kvMapping = nil
-	return
-}
+//func (w *WriteBatch) RollBack() {
+//	w.kvMapping = nil
+//	return
+//}

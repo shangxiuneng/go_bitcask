@@ -37,3 +37,8 @@ var DefaultConfig = Config{
 	BytesPerSync: 0, // 0 表示不开启该功能
 	MMapStartup:  true,
 }
+
+var DefaultBatchConfig = BatchConfig{
+	MaxBatchNum: 10,
+	SyncWrite:   true,
+}
