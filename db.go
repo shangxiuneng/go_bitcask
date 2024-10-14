@@ -8,7 +8,6 @@ import (
 	"go_bitcask/fio"
 	"go_bitcask/index"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -100,7 +99,7 @@ func Open(conf Config) (*DB, error) {
 			return nil, err
 		}
 		// 构造索引
-		if err := db.loadIndex(); err != nil {
+		if err := db.loadIndexFromDataFile(); err != nil {
 			log.Error().Msgf("loadIndex error,err = %v", err)
 			return nil, err
 		}
@@ -134,8 +133,8 @@ func checkDBConfig(option Config) error {
 	return nil
 }
 
-// TODO 载入索引的过程会非常慢
-func (d *DB) loadIndex() error {
+// 从数据文件中载入索引
+func (d *DB) loadIndexFromDataFile() error {
 	if len(d.fileIDs) == 0 {
 		// 没有文件id
 		return nil
@@ -148,10 +147,10 @@ func (d *DB) loadIndex() error {
 	noMergeFileID := 0
 
 	mergeFileName := filepath.Join(d.options.DirPath, data.MergeFinFileName)
-	_, err := os.Stat(mergeFileName)
-	if !errors.Is(err, fs.ErrNotExist) {
+
+	if _, err := os.Stat(mergeFileName); err == nil {
 		var err error
-		noMergeFileID, err = d.getNoMergeFileID(mergeFileName)
+		noMergeFileID, err = d.getNonMergeFileID(mergeFileName)
 		if err != nil {
 			log.Error().Msgf("getNoMergeFileID error,err = %v", err)
 			return err
@@ -478,6 +477,7 @@ func (d *DB) Delete(key []byte) error {
 func (d *DB) Close() error {
 
 	defer func() {
+		// 释放文件锁
 		if err := d.fileLock.Unlock(); err != nil {
 			log.Error().Msgf("file lock unlock error,err = %v", err)
 			return
@@ -499,7 +499,7 @@ func (d *DB) Close() error {
 	}
 
 	seqRecord := &data.RecordInfo{
-		Key:   []byte{},
+		Key:   []byte{}, // TODO 这里的key是nil
 		Value: []byte(strconv.Itoa(int(d.seqNo))),
 	}
 

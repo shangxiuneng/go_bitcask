@@ -208,7 +208,7 @@ func (d *DB) loadMergeFile() error {
 		if v.Name() == data.MergeFinFileName {
 			// merge文件存在 说明merge已经完成
 			isMergeFin = true
-			continue
+			//continue
 		}
 		if v.Name() == data.SeqNoFileName || v.Name() == fileLockName {
 			continue
@@ -222,7 +222,7 @@ func (d *DB) loadMergeFile() error {
 	}
 
 	// 删除旧的数据文件
-	noMergeFileID, err := d.getNoMergeFileID(mergePath)
+	noMergeFileID, err := d.getNonMergeFileID(mergePath)
 	if err != nil {
 		log.Error().Msgf("getNoMergeFileID error,err = %v", err)
 		return err
@@ -290,9 +290,15 @@ func (d *DB) loadHintFile() error {
 	return nil
 }
 
-func (d *DB) getNoMergeFileID(mergePath string) (int, error) {
+func (d *DB) getNonMergeFileID(mergePath string) (int, error) {
 	mergeFinFile, err := data.NewMergeFinFile(mergePath)
+	defer func() {
+		if mergeFinFile != nil {
+			mergeFinFile.Close()
+		}
+	}()
 	if err != nil {
+		log.Error().Msgf("getNonMergeFileID error,err = %v", err)
 		return 0, err
 	}
 

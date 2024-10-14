@@ -32,7 +32,7 @@ func (s *Service) HSet(key []byte, filed []byte, value []byte) (bool, error) {
 	}
 
 	// TODO new方法实现的不好 应该把new放在db上
-	writeBatch := go_bitcask.NewWriteBatch(s.db, go_bitcask.BatchConfig{})
+	writeBatch := s.db.NewWriteBatch(go_bitcask.BatchConfig{})
 	if !exist {
 		// 说明key不存在
 		meta.size++
