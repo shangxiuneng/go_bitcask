@@ -24,7 +24,41 @@ func NewRedisService(config go_bitcask.Config) (*Service, error) {
 	}, nil
 }
 
+// 查找元数据
 func (s *Service) findMetaData(key []byte, dataType byte) (*metaData, error) {
+	metaBuf, err := s.db.Get(key)
+	if err != nil {
+		return nil, err
+	}
+
+	var meta *metaData
+	exist := true
+	if err != nil {
+		exist = false
+	} else {
+		meta = decodeMetaData(metaBuf)
+		if meta.dataType != dataType {
+			return nil, errors.New("dataType error")
+		}
+
+		if meta.expire != 0 && meta.expire <= time.Now().UnixNano() {
+			exist = false
+		}
+	}
+
+	if !exist {
+		meta = &metaData{
+			dataType: dataType,
+			expire:   0,
+			version:  time.Now().UnixNano(),
+			size:     0,
+		}
+
+		if dataType == List {
+			panic("List")
+		}
+	}
+
 	return nil, nil
 }
 

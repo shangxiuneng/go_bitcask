@@ -10,7 +10,6 @@ version 用于快速删除
 size 当前key下有多少field
 value = value
 */
-
 func (s *Service) HSet(key []byte, filed []byte, value []byte) (bool, error) {
 	meta, err := s.findMetaData(key, Hash)
 	if err != nil {
@@ -31,12 +30,11 @@ func (s *Service) HSet(key []byte, filed []byte, value []byte) (bool, error) {
 		exist = false
 	}
 
-	// TODO new方法实现的不好 应该把new放在db上
-	writeBatch := s.db.NewWriteBatch(go_bitcask.BatchConfig{})
+	writeBatch := s.db.NewWriteBatch(go_bitcask.DefaultBatchConfig)
 	if !exist {
 		// 说明key不存在
 		meta.size++
-		_ = writeBatch.Put(key, meta.encodeMetaData())
+		_ = writeBatch.Put(key, encodeMetaData(meta))
 	}
 
 	_ = writeBatch.Put(internalKeyData, value)
@@ -47,7 +45,7 @@ func (s *Service) HSet(key []byte, filed []byte, value []byte) (bool, error) {
 	return true, nil
 }
 
-func (s *Service) HGet(key []byte) ([]byte, error) {
+func (s *Service) HGet(key, field []byte) ([]byte, error) {
 	meta, err := s.findMetaData(key, Hash)
 	if err != nil {
 		return nil, err
@@ -57,10 +55,51 @@ func (s *Service) HGet(key []byte) ([]byte, error) {
 		return nil, nil
 	}
 
-	// TODO
-	return nil, nil
+	hashKey := hashInternalKey{
+		key:     key,
+		version: meta.version,
+		field:   field,
+	}
+
+	return s.db.Get(hashKey.encode())
+
 }
 
-func (s *Service) HDel(key []byte, filed []byte, value []byte) (bool, error) {
+func (s *Service) HDel(key []byte, field []byte) (bool, error) {
+
+	meta, err := s.findMetaData(key, Hash)
+	if err != nil {
+		return false, err
+	}
+
+	if meta.size == 0 {
+		return false, nil
+	}
+
+	hashKey := hashInternalKey{
+		key:     key,
+		version: meta.version,
+		field:   field,
+	}
+
+	exist := true
+
+	if _, err := s.db.Get(hashKey.encode()); err != nil {
+		exist = false
+	}
+
+	if exist {
+		writeBatch := s.db.NewWriteBatch(go_bitcask.DefaultBatchConfig)
+
+		meta.size--
+
+		writeBatch.Put(key, encodeMetaData(meta))
+		writeBatch.Delete(hashKey.encode())
+
+		if err := writeBatch.Commit(); err != nil {
+			return false, err
+		}
+	}
+
 	return false, nil
 }
