@@ -49,3 +49,35 @@ func decodeMetaData(buf []byte) *metaData {
 	panic("decodeMetaData")
 	return nil
 }
+
+type setInternalKey struct {
+	key        []byte
+	version    int64
+	member     []byte
+	memberSize int64
+}
+
+func (s *setInternalKey) encode() []byte {
+	buf := make([]byte, len(s.key)+len(s.member)+8+8)
+
+	// key
+	index := 0
+	copy(buf[index:index+len(s.key)], s.key)
+	index = index + len(s.key)
+
+	// version
+	binary.LittleEndian.PutUint64(buf[index:index+8], uint64(s.version))
+
+	index = index + 8
+
+	// member
+	copy(buf[index:], s.member)
+	index = index + len(s.member)
+
+	// member size
+	binary.LittleEndian.PutUint64(buf[index:index+8], uint64(s.memberSize))
+
+	index = index + 8
+
+	return buf
+}
