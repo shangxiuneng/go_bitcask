@@ -38,6 +38,10 @@ func (a *ArtTree) Get(key []byte) (*data.RecordPos, error) {
 	return value.(*data.RecordPos), nil
 }
 
+func (a *ArtTree) Close() error {
+	return nil
+}
+
 func (a *ArtTree) Delete(key []byte) error {
 	if len(key) == 0 {
 		return errors.New("key is nil")

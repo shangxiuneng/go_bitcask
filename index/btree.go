@@ -75,6 +75,10 @@ func (b *BTree) Iterator(reverse bool) Iterator {
 	return NewBTreeIterator(b.tree, reverse)
 }
 
+func (b *BTree) Close() error {
+	return nil
+}
+
 // BTreeIterator Btree的索引迭代器
 type BTreeIterator struct {
 	Iterator

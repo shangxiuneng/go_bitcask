@@ -91,6 +91,9 @@ func (b *BPlusTree) Delete(key []byte) error {
 func (b *BPlusTree) Iterator(reverse bool) Iterator {
 	return newBPlusTreeIterator(b.bPlusTree, reverse)
 }
+func (b *BPlusTree) Close() error {
+	return b.bPlusTree.Close()
+}
 
 type bPlusTreeIterator struct {
 	Iterator

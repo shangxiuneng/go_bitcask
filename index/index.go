@@ -10,6 +10,7 @@ type Index interface {
 	Get(key []byte) (*data.RecordPos, error)
 	Delete(key []byte) error
 	Iterator(reverse bool) Iterator
+	Close() error
 }
 
 // IndexType 索引类型

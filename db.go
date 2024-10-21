@@ -19,6 +19,7 @@ import (
 
 var (
 	fileLockName = "file_lock"
+	seqNumKey    = "seqNumKey"
 )
 
 type DB struct {
@@ -34,6 +35,7 @@ type DB struct {
 	fileLock       *flock.Flock           // 文件锁
 	bytesWrite     int                    // 累计写了多少字节
 	reclaimSize    int64                  // 表示多少数据是无效的
+	isInitial      bool
 }
 
 type Static struct {
@@ -46,12 +48,14 @@ func Open(conf Config) (*DB, error) {
 		return nil, err
 	}
 
+	isInitial := false
 	if _, err := os.Stat(conf.DirPath); os.IsNotExist(err) {
 		// 创建目录
 		if err := os.MkdirAll(conf.DirPath, os.ModePerm); err != nil {
 			log.Error().Msgf("MkdirAll error,err = %v", err)
 			return nil, err
 		}
+		isInitial = true
 		log.Info().Msg("mkdir success")
 	}
 
@@ -71,12 +75,23 @@ func Open(conf Config) (*DB, error) {
 		return nil, errors.New("hold is false")
 	}
 
+	entries, err := os.ReadDir(conf.DirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(entries) == 0 {
+		// 存在目录 但是目录下没有文件 也认为是初始化
+		isInitial = true
+	}
+
 	db := &DB{
 		options:     conf,
 		lock:        new(sync.Mutex),
 		fileMapping: map[int]*data.DataFile{},
 		index:       index.NewIndex(index.BTreeIndex, "", false),
 		fileLock:    fileLock,
+		isInitial:   isInitial,
 	}
 
 	if err := db.loadMergeFile(); err != nil {
@@ -91,9 +106,6 @@ func Open(conf Config) (*DB, error) {
 	}
 
 	if conf.IndexType != index.BPlusIndex {
-		// b+树不从磁盘上加载索引
-		// TODO 如果第一次使用的是hash 后面又改成了b+ 会有问题
-		// 加载对应的hint文件
 		if err := db.loadHintFile(); err != nil {
 			log.Error().Msgf("loadHintFile error,err = %v", err)
 			return nil, err
@@ -107,7 +119,16 @@ func Open(conf Config) (*DB, error) {
 
 	if conf.IndexType == index.BPlusIndex {
 		// 加载seqNo
-
+		if err := db.loadSeqNum(); err != nil {
+			return nil, err
+		}
+		if db.activeFile != nil {
+			size, err := db.activeFile.IOManager.Size()
+			if err != nil {
+				return nil, err
+			}
+			db.activeFile.WriteOffSet = size
+		}
 	}
 
 	if conf.MMapStartup {
@@ -491,15 +512,19 @@ func (d *DB) Close() error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
+	if err := d.index.Close(); err != nil {
+		return err
+	}
+
 	// 保存当前事务序列号
 	seqFile, err := data.NewSeqNumFile(d.options.DirPath)
 	if err != nil {
 		log.Error().Msgf("NewSeqNumFile error,err = %v", err)
 		return err
 	}
-
+	// 保存当前事务对应的序列号
 	seqRecord := &data.RecordInfo{
-		Key:   []byte{}, // TODO 这里的key是nil
+		Key:   []byte(seqNumKey),
 		Value: []byte(strconv.Itoa(int(d.seqNo))),
 	}
 
@@ -550,6 +575,7 @@ func (d *DB) Fold(fn func(key []byte, value []byte) bool) error {
 	}
 
 	it := d.index.Iterator(false)
+	defer it.Close()
 	for it.Rewind(); it.Valid(); it.Next() {
 		value, err := d.getValueByPos(it.Value())
 		if err != nil {
@@ -574,6 +600,7 @@ func (d *DB) Sync() error {
 }
 
 func (d *DB) loadSeqNum() error {
+	panic("loadSeqNum")
 	d.isSeqFileExist = true
 	return nil
 }

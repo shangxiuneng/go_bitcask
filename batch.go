@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/rs/zerolog/log"
 	"go_bitcask/data"
+	"go_bitcask/index"
 	"sync"
 	"sync/atomic"
 )
@@ -23,11 +24,10 @@ var (
 )
 
 func (d *DB) NewWriteBatch(config BatchConfig) WriteBatch {
-	/* 前置校验
-	if db.options.IndexType == BPlusTree && !db.seqNoFileExists && !db.isInitial {
+
+	if d.options.IndexType == index.BPlusIndex && !d.isSeqFileExist && !d.isInitial {
 		panic("cannot use write batch, seq no file not exists")
 	}
-	*/
 
 	return WriteBatch{
 		lock:      new(sync.Mutex),

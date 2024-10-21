@@ -52,6 +52,10 @@ func (h *Hash) Iterator(reverse bool) Iterator {
 	return newHashIterator(h.m, reverse)
 }
 
+func (h *Hash) Close() error {
+	return nil
+}
+
 type hashIterator struct {
 	Iterator
 
