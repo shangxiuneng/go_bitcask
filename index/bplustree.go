@@ -10,7 +10,7 @@ import (
 
 var indexBucketName = []byte("bitcask-index")
 
-const bptreeIndexFileName = "bptree-index"
+const bBtreeIndexFileName = "bptree-index"
 
 // BPlusTree B+树
 type BPlusTree struct {
@@ -21,7 +21,7 @@ type BPlusTree struct {
 
 func newBPlusTree(dirPath string, syncWrites bool) Index {
 	db, err := bbolt.Open(
-		filepath.Join(dirPath, bptreeIndexFileName),
+		filepath.Join(dirPath, bBtreeIndexFileName),
 		0644,
 		bbolt.DefaultOptions)
 	if err != nil {
@@ -89,5 +89,71 @@ func (b *BPlusTree) Delete(key []byte) error {
 	return nil
 }
 func (b *BPlusTree) Iterator(reverse bool) Iterator {
-	return nil
+	return newBPlusTreeIterator(b.bPlusTree, reverse)
+}
+
+type bPlusTreeIterator struct {
+	Iterator
+
+	tx        *bbolt.Tx
+	cursor    *bbolt.Cursor
+	reverse   bool // 是否为反向遍历
+	currKey   []byte
+	currValue []byte
+}
+
+func newBPlusTreeIterator(tree *bbolt.DB, reverse bool) Iterator {
+	tx, err := tree.Begin(false)
+	if err != nil {
+		log.Error().Msgf("newBPlusTreeIterator error,err = %v", err)
+		return nil
+	}
+	it := &bPlusTreeIterator{
+		reverse: reverse,
+		cursor:  tx.Bucket(indexBucketName).Cursor(),
+	}
+	it.Rewind()
+	return it
+}
+
+// Rewind 重新回到迭代器的起点
+func (b *bPlusTreeIterator) Rewind() {
+	if b.reverse {
+		b.currKey, b.currValue = b.cursor.Last()
+	} else {
+		b.currKey, b.currValue = b.cursor.First()
+	}
+}
+
+// Seek 根据传入的key，查找到第一个大于或小于目标的key 从这个key开始遍历
+func (b *bPlusTreeIterator) Seek(key []byte) {
+	panic("Seek")
+}
+
+func (b *bPlusTreeIterator) Next() {
+	if b.reverse {
+		b.currKey, b.currValue = b.cursor.Prev()
+	} else {
+		b.currKey, b.currValue = b.cursor.Next()
+	}
+}
+
+// Valid 当前迭代器是否有效
+func (b *bPlusTreeIterator) Valid() bool {
+	return len(b.currKey) != 0
+}
+
+// Key 当前迭代器指向的key数据
+func (b *bPlusTreeIterator) Key() []byte {
+	return b.currKey
+}
+
+func (b *bPlusTreeIterator) Value() *data.RecordPos {
+	pos, _ := data.DecodeRecordPos(b.currValue)
+	return pos
+}
+
+// Close 关闭迭代器 释放相应的资源
+func (b *bPlusTreeIterator) Close() {
+	b.tx.Rollback()
 }
