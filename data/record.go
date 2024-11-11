@@ -9,6 +9,7 @@ import (
 type RecordPos struct {
 	FileID int // 文件id
 	Offset int // 在文件中的偏移量
+	Size   int // RecordPos的大小
 }
 
 type RecordType byte

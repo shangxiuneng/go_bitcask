@@ -254,3 +254,21 @@ func TestDB_Fold(t *testing.T) {
 	})
 	assert.Nil(t, err)
 }
+
+func TestDB_FileLock(t *testing.T) {
+	db, err := Open(Config{
+		DirPath:      "temp",
+		DataFileSize: 1000,
+		IndexType:    index.HashIndex,
+	})
+	assert.Nil(t, err)
+	assert.NotNil(t, db)
+
+	db2, err := Open(Config{
+		DirPath:      "temp",
+		DataFileSize: 1000,
+		IndexType:    index.HashIndex,
+	})
+	assert.NotNil(t, err)
+	assert.Nil(t, db2)
+}

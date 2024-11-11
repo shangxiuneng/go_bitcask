@@ -22,9 +22,9 @@ func newArtTree() Index {
 	}
 }
 
-func (a *ArtTree) Put(key []byte, record *data.RecordPos) error {
+func (a *ArtTree) Put(key []byte, record *data.RecordPos) (*data.RecordPos, error) {
 	a.artTree.Insert(key, record)
-	return nil
+	return nil, nil
 }
 func (a *ArtTree) Get(key []byte) (*data.RecordPos, error) {
 	if len(key) == 0 {
@@ -42,15 +42,15 @@ func (a *ArtTree) Close() error {
 	return nil
 }
 
-func (a *ArtTree) Delete(key []byte) error {
+func (a *ArtTree) Delete(key []byte) (*data.RecordPos, error) {
 	if len(key) == 0 {
-		return errors.New("key is nil")
+		return nil, errors.New("key is nil")
 	}
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
 	a.artTree.Delete(key)
-	return nil
+	return nil, nil
 }
 
 func (a *ArtTree) Iterator(reverse bool) Iterator {

@@ -36,6 +36,7 @@ type DB struct {
 	bytesWrite     int                    // 累计写了多少字节
 	reclaimSize    int64                  // 表示多少数据是无效的
 	isInitial      bool
+	failure        int // 被删除掉的数据
 }
 
 type Static struct {
@@ -323,10 +324,18 @@ func (d *DB) Put(key []byte, value []byte) error {
 	}
 
 	// 更新内存索引
-	if err := d.index.Put(key, pos); err != nil {
+	var oldValue *data.RecordPos
+	var err error
+	if oldValue, err = d.index.Put(key, pos); err != nil {
 		log.Error().Msgf("index Put error,err = %v", err)
 		return err
 	}
+
+	if oldValue != nil {
+		// TODO
+		d.failure = d.failure + oldValue.FileID
+	}
+
 	return nil
 }
 
@@ -369,7 +378,8 @@ func (d *DB) appendRecord(record *data.RecordInfo) (*data.RecordPos, error) {
 		syncWrites = true
 	}
 
-	// TODO 这里需要记录每次写入的字节数 没实现
+	d.bytesWrite = d.bytesWrite + size
+
 	if syncWrites {
 		if err := d.activeFile.Sync(); err != nil {
 			log.Error().Msgf("appendRecord error,err = %v", err)
@@ -379,6 +389,7 @@ func (d *DB) appendRecord(record *data.RecordInfo) (*data.RecordPos, error) {
 			d.bytesWrite = 0
 		}
 		syncWrites = false
+
 	}
 
 	return &data.RecordPos{

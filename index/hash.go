@@ -20,14 +20,17 @@ func newHashIndex() Index {
 	}
 }
 
-func (h *Hash) Put(key []byte, record *data.RecordPos) error {
+func (h *Hash) Put(key []byte, record *data.RecordPos) (*data.RecordPos, error) {
 	if len(key) == 0 {
-		return errors.New("key is nil")
+		return nil, errors.New("key is nil")
 	}
 	h.lock.Lock()
 	defer h.lock.Unlock()
+
+	oldRecord := h.m[string(key)]
+
 	h.m[string(key)] = record
-	return nil
+	return oldRecord, nil
 }
 func (h *Hash) Get(key []byte) (*data.RecordPos, error) {
 	h.lock.RLock()
@@ -37,16 +40,19 @@ func (h *Hash) Get(key []byte) (*data.RecordPos, error) {
 	}
 	return nil, errors.New("key is not exist")
 }
-func (h *Hash) Delete(key []byte) error {
+func (h *Hash) Delete(key []byte) (*data.RecordPos, error) {
 	if len(key) == 0 {
-		return errors.New("key is nil")
+		return nil, errors.New("key is nil")
 	}
 
 	h.lock.Lock()
 	h.lock.Unlock()
+
+	oldRecord := h.m[string(key)]
+
 	delete(h.m, string(key))
 
-	return nil
+	return oldRecord, nil
 }
 func (h *Hash) Iterator(reverse bool) Iterator {
 	return newHashIterator(h.m, reverse)

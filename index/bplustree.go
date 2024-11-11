@@ -43,9 +43,9 @@ func newBPlusTree(dirPath string, syncWrites bool) Index {
 	}
 }
 
-func (b *BPlusTree) Put(key []byte, record *data.RecordPos) error {
+func (b *BPlusTree) Put(key []byte, record *data.RecordPos) (*data.RecordPos, error) {
 	if len(key) == 0 {
-		return errors.New("key is nil")
+		return nil, errors.New("key is nil")
 	}
 
 	err := b.bPlusTree.Update(func(tx *bbolt.Tx) error {
@@ -62,7 +62,7 @@ func (b *BPlusTree) Put(key []byte, record *data.RecordPos) error {
 		return nil
 	})
 
-	return err
+	return nil, err
 }
 func (b *BPlusTree) Get(key []byte) (*data.RecordPos, error) {
 	var dataRecordPos []byte
@@ -85,8 +85,9 @@ func (b *BPlusTree) Get(key []byte) (*data.RecordPos, error) {
 
 	return data.DecodeRecordPos(dataRecordPos)
 }
-func (b *BPlusTree) Delete(key []byte) error {
-	return nil
+func (b *BPlusTree) Delete(key []byte) (*data.RecordPos, error) {
+	panic("delete")
+	return nil, nil
 }
 func (b *BPlusTree) Iterator(reverse bool) Iterator {
 	return newBPlusTreeIterator(b.bPlusTree, reverse)

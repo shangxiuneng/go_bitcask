@@ -6,9 +6,9 @@ import (
 )
 
 type Index interface {
-	Put(key []byte, record *data.RecordPos) error
+	Put(key []byte, record *data.RecordPos) (*data.RecordPos, error)
 	Get(key []byte) (*data.RecordPos, error)
-	Delete(key []byte) error
+	Delete(key []byte) (*data.RecordPos, error)
 	Iterator(reverse bool) Iterator
 	Close() error
 }
@@ -32,13 +32,13 @@ const (
 func NewIndex(indexType IndexType, dirPath string, syncWrite bool) Index {
 	switch indexType {
 	case BTreeIndex:
-		return newBTree(32)
+		//return newBTree(32)
 	case HashIndex:
 		return newHashIndex()
 	case ArtIndex:
-		return newArtTree()
+		//return newArtTree()
 	case BPlusIndex:
-		return newBPlusTree(dirPath, syncWrite)
+		//return newBPlusTree(dirPath, syncWrite)
 	default:
 		log.Error().Msgf("undefined index type = %v", indexType)
 	}
